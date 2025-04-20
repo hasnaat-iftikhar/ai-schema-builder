@@ -1,7 +1,7 @@
 import { auth } from "@/auth"
-import { NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 
-export async function getCurrentUser() {
+export async function getCurrentUser(req?: NextRequest) {
   const session = await auth()
   return session?.user || null
 }

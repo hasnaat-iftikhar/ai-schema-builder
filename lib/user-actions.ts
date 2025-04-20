@@ -1,6 +1,6 @@
 "use server"
 
-import bcrypt from "bcrypt"
+import bcrypt from "bcryptjs"
 import { sql } from "./db"
 import { generateId } from "./db"
 import { signIn } from "@/auth"
