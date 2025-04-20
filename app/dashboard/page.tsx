@@ -3,13 +3,17 @@
 import { ProjectsTable } from "@/components/projects-table"
 import { CreateProjectDialog } from "@/components/create-project-dialog"
 import { UserProfileDropdown } from "@/components/user-profile-dropdown"
+import { useAuth } from "@/hooks/use-auth"
 
 export default function DashboardPage() {
-  // Sample user data - in a real app, this would come from authentication
-  const user = {
-    name: "John Doe",
-    email: "john@example.com",
-    avatar: "/avatars/john-doe.jpg",
+  const { user, isLoading } = useAuth()
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-cryptic-background flex items-center justify-center">
+        <div className="animate-pulse text-lg">Loading...</div>
+      </div>
+    )
   }
 
   return (
@@ -21,7 +25,7 @@ export default function DashboardPage() {
           {/* First Column */}
           <div className="space-y-6">
             <div className="bg-cryptic-card border border-white/10 rounded-lg p-4">
-              <UserProfileDropdown user={user} />
+              <UserProfileDropdown />
             </div>
 
             <div className="bg-cryptic-card border border-white/10 rounded-lg p-4">

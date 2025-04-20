@@ -1,7 +1,6 @@
 "use client"
 
 import { BadgeCheck, Bell, ChevronsUpDown, CreditCard, LogOut, Sparkles } from "lucide-react"
-
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   DropdownMenu,
@@ -13,16 +12,30 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
+import { useSession, signOut } from "next-auth/react"
+import { useRouter } from "next/navigation"
 
-export function UserProfileDropdown({
-  user,
-}: {
-  user: {
-    name: string
-    email: string
-    avatar: string
+export function UserProfileDropdown() {
+  const { data: session } = useSession()
+  const router = useRouter()
+  const user = session?.user
+
+  if (!user) {
+    return null
   }
-}) {
+
+  const initials = user.name
+    ? user.name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+    : "U"
+
+  const handleLogout = async () => {
+    await signOut({ redirect: false })
+    router.push("/login")
+  }
+
   return (
     <div className="w-full">
       <DropdownMenu>
@@ -32,16 +45,11 @@ export function UserProfileDropdown({
             className="w-full justify-start gap-2 border-white/10 bg-cryptic-background hover:bg-cryptic-background/80"
           >
             <Avatar className="h-8 w-8 rounded-lg">
-              <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
-              <AvatarFallback className="rounded-lg">
-                {user.name
-                  .split(" ")
-                  .map((n) => n[0])
-                  .join("")}
-              </AvatarFallback>
+              <AvatarImage src={user.image || ""} alt={user.name || "User"} />
+              <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
             </Avatar>
             <div className="grid flex-1 text-left text-sm leading-tight">
-              <span className="truncate font-semibold">{user.name}</span>
+              <span className="truncate font-semibold">{user.name || "User"}</span>
               <span className="truncate text-xs text-gray-400">{user.email}</span>
             </div>
             <ChevronsUpDown className="ml-auto size-4 opacity-50" />
@@ -51,16 +59,11 @@ export function UserProfileDropdown({
           <DropdownMenuLabel className="p-0 font-normal">
             <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
               <Avatar className="h-8 w-8 rounded-lg">
-                <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
-                <AvatarFallback className="rounded-lg">
-                  {user.name
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")}
-                </AvatarFallback>
+                <AvatarImage src={user.image || ""} alt={user.name || "User"} />
+                <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">{user.name}</span>
+                <span className="truncate font-semibold">{user.name || "User"}</span>
                 <span className="truncate text-xs text-gray-400">{user.email}</span>
               </div>
             </div>
@@ -74,7 +77,7 @@ export function UserProfileDropdown({
           </DropdownMenuGroup>
           <DropdownMenuSeparator className="bg-white/10" />
           <DropdownMenuGroup>
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push("/dashboard/profile")}>
               <BadgeCheck className="size-4 w-4 h-4" />
               <span className="text-[14px]">Account</span>
             </DropdownMenuItem>
@@ -88,7 +91,7 @@ export function UserProfileDropdown({
             </DropdownMenuItem>
           </DropdownMenuGroup>
           <DropdownMenuSeparator className="bg-white/10" />
-          <DropdownMenuItem>
+          <DropdownMenuItem onClick={handleLogout}>
             <LogOut className="size-4 w-4 h-4" />
             <span className="text-[14px]">Log out</span>
           </DropdownMenuItem>
