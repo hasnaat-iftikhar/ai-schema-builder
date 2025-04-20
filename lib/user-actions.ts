@@ -1,63 +1,50 @@
 "use server"
 
+import { sql } from "@/lib/db"
 import bcrypt from "bcryptjs"
-import { sql } from "./db"
-import { generateId } from "./db"
-import { signIn } from "@/auth"
-import { redirect } from "next/navigation"
+import { z } from "zod"
 
-interface RegisterUserData {
-  name: string
-  email: string
-  password: string
-}
+const userSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+})
 
-export async function registerUser(data: RegisterUserData) {
-  const { name, email, password } = data
-
+export async function registerUser(formData: { name: string; email: string; password: string }) {
   try {
+    // Validate form data
+    const validatedFields = userSchema.parse({
+      name: formData.name,
+      email: formData.email,
+      password: formData.password,
+    })
+
     // Check if user already exists
     const existingUsers = await sql`
-      SELECT id FROM users WHERE email = ${email} LIMIT 1
+      SELECT * FROM users WHERE email = ${validatedFields.email}
     `
 
     if (existingUsers.length > 0) {
-      return { success: false, error: "Email already in use" }
+      return { error: "User with this email already exists" }
     }
 
     // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10)
+    const hashedPassword = await bcrypt.hash(validatedFields.password, 10)
 
     // Create user
-    const userId = generateId()
-    await sql`
-      INSERT INTO users (id, name, email, password)
-      VALUES (${userId}, ${name}, ${email}, ${hashedPassword})
+    const result = await sql`
+      INSERT INTO users (name, email, password)
+      VALUES (${validatedFields.name}, ${validatedFields.email}, ${hashedPassword})
+      RETURNING id, name, email
     `
 
-    return { success: true, userId }
+    const newUser = result[0]
+
+    return { success: true, user: newUser }
   } catch (error) {
-    console.error("Error registering user:", error)
-    return { success: false, error: "Failed to register user" }
-  }
-}
-
-export async function authenticateUser(email: string, password: string) {
-  try {
-    const result = await signIn("credentials", { email, password, redirect: false })
-
-    if (result?.error) {
-      return { success: false, error: "Invalid credentials" }
+    if (error instanceof z.ZodError) {
+      return { error: error.errors[0].message }
     }
-
-    return { success: true }
-  } catch (error) {
-    console.error("Error authenticating user:", error)
-    return { success: false, error: "Authentication failed" }
+    return { error: "Failed to create user" }
   }
-}
-
-export async function signInAndRedirect(provider: string, data?: Record<string, any>) {
-  await signIn(provider, { ...data, redirectTo: "/dashboard" })
-  redirect("/dashboard")
 }
