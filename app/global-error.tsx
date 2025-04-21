@@ -1,7 +1,5 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
-
 export default function GlobalError({
   error,
   reset,
@@ -11,10 +9,13 @@ export default function GlobalError({
 }) {
   return (
     <html lang="en" className="dark">
-      <body className="flex flex-col items-center justify-center min-h-screen p-4 text-center bg-background text-foreground">
-        <h2 className="text-2xl font-bold mb-4">Something went wrong!</h2>
-        <p className="mb-8 text-muted-foreground">We apologize for the inconvenience. Please try again later.</p>
-        <Button onClick={() => reset()}>Try again</Button>
+      <body className="flex min-h-screen flex-col items-center justify-center p-4">
+        <h1 className="text-2xl font-bold text-red-500">Something went wrong globally</h1>
+        <p className="mt-4 text-gray-400">{error?.message || "An unknown error occurred"}</p>
+        {error?.digest && <p className="mt-2 text-sm text-gray-500">Error ID: {error.digest}</p>}
+        <button className="mt-4 rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700" onClick={() => reset()}>
+          Try again
+        </button>
       </body>
     </html>
   )

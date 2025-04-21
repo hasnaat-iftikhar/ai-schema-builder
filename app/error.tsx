@@ -12,18 +12,19 @@ export default function Error({
 }) {
   useEffect(() => {
     // Log the error to an error reporting service
-    console.error(error)
+    console.error("Error caught by error.tsx:", error)
   }, [error])
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
-      <h2 className="text-2xl font-bold mb-4">Something went wrong!</h2>
-      <p className="mb-8 text-muted-foreground">We apologize for the inconvenience. Please try again later.</p>
+    <div className="flex min-h-screen flex-col items-center justify-center p-4">
+      <h1 className="text-2xl font-bold text-red-500">Something went wrong</h1>
+      <p className="mt-4 text-gray-400">{error?.message || "An unknown error occurred"}</p>
+      {error?.digest && <p className="mt-2 text-sm text-gray-500">Error ID: {error.digest}</p>}
       <Button
-        onClick={
-          // Attempt to recover by trying to re-render the segment
-          () => reset()
-        }
+        className="mt-4"
+        onClick={() => {
+          reset()
+        }}
       >
         Try again
       </Button>

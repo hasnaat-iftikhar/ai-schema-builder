@@ -1,20 +1,9 @@
 import { authMiddleware } from "@clerk/nextjs"
 
-// This example protects all routes including api/trpc routes
-// Please edit this to allow other routes to be public as needed.
-// See https://clerk.com/docs/references/nextjs/auth-middleware for more information about configuring your middleware
+// Export a minimal middleware configuration to start
 export default authMiddleware({
-  publicRoutes: [
-    "/",
-    "/login",
-    "/signup",
-    "/api/health",
-    // Add any other public routes here
-  ],
-  ignoredRoutes: [
-    "/api/health",
-    // Add any routes that should bypass authentication checks completely
-  ],
+  // Make all routes public temporarily to isolate the issue
+  publicRoutes: ["/(.*)", "/api/(.*)"],
 })
 
 export const config = {
