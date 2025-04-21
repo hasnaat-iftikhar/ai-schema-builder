@@ -1,8 +1,8 @@
 import { SignIn } from "@clerk/nextjs"
-import { auth } from "@clerk/nextjs/server"
 import { redirect } from "next/navigation"
+import { auth } from "@clerk/nextjs/server"
 
-export default function LoginPage() {
+export default async function LoginPage() {
   const { userId } = auth()
 
   if (userId) {
@@ -10,18 +10,24 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-100 dark:bg-gray-900">
+    <div className="flex min-h-screen flex-col items-center justify-center p-4">
       <div className="w-full max-w-md">
         <SignIn
           appearance={{
             elements: {
-              rootBox: "mx-auto w-full",
-              card: "bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6",
-              headerTitle: "text-2xl font-bold text-center",
-              headerSubtitle: "text-center",
-              formButtonPrimary: "bg-blue-600 hover:bg-blue-700",
+              rootBox: "w-full",
+              card: "bg-background border border-border shadow-lg",
+              headerTitle: "text-foreground",
+              headerSubtitle: "text-muted-foreground",
+              socialButtonsBlockButton: "bg-muted text-foreground border border-border hover:bg-muted/80",
+              dividerLine: "bg-border",
+              formFieldLabel: "text-foreground",
+              formFieldInput: "bg-background border border-input text-foreground",
+              footerActionLink: "text-primary hover:text-primary/80",
             },
           }}
+          redirectUrl="/dashboard"
+          signUpUrl="/signup"
         />
       </div>
     </div>

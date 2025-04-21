@@ -11,8 +11,12 @@ export default authMiddleware({
     "/api/health",
     // Add any other public routes here
   ],
+  ignoredRoutes: [
+    "/api/health",
+    // Add any routes that should bypass authentication checks completely
+  ],
 })
 
 export const config = {
-  matcher: ["/((?!.+\\.[\\w]+$|_next).*)", "/", "/(api|trpc)(.*)"],
+  matcher: ["/((?!.*\\..*|_next).*)", "/", "/(api|trpc)(.*)"],
 }

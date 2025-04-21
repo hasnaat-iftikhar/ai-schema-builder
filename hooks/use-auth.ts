@@ -1,15 +1,23 @@
 "use client"
 
-import { useAuth as useClerkAuth } from "@clerk/nextjs"
+import { useAuth as useClerkAuth, useUser } from "@clerk/nextjs"
 
-export const useAuth = () => {
-  const { isLoaded, isSignedIn, userId } = useClerkAuth()
+export function useAuth() {
+  const { isLoaded, userId, sessionId, isSignedIn } = useClerkAuth()
+  const { user } = useUser()
 
   return {
     isLoaded,
     isAuthenticated: isSignedIn,
-    user: isSignedIn ? { id: userId } : null,
-    // Add any other properties that might be expected by the existing code
+    user: user
+      ? {
+          id: userId || "",
+          name: user.fullName || "",
+          email: user.primaryEmailAddress?.emailAddress || "",
+          image: user.imageUrl || "",
+        }
+      : null,
+    sessionId,
   }
 }
 
