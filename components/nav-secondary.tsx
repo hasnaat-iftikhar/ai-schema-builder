@@ -1,34 +1,21 @@
-"use client"
+import { UserProfileDropdown } from "@/components/user-profile-dropdown"
+import type { User } from "@clerk/nextjs/server"
 
-import type { LucideIcon } from "lucide-react"
+interface NavSecondaryProps {
+  user?: User | null
+}
 
-import { SidebarGroup, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar"
-
-export function NavSecondary({
-  items,
-  className,
-}: {
-  items: {
-    title: string
-    url: string
-    icon: LucideIcon
-  }[]
-  className?: string
-}) {
+export function NavSecondary({ user }: NavSecondaryProps) {
   return (
-    <SidebarGroup className={className}>
-      <SidebarMenu>
-        {items.map((item) => (
-          <SidebarMenuItem key={item.title}>
-            <SidebarMenuButton asChild>
-              <a href={item.url}>
-                <item.icon />
-                <span>{item.title}</span>
-              </a>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        ))}
-      </SidebarMenu>
-    </SidebarGroup>
+    <div className="border-b">
+      <div className="flex h-16 items-center px-4 justify-between">
+        <div className="flex items-center gap-4">
+          <h1 className="text-xl font-semibold">AI Schema Builder</h1>
+        </div>
+        <div className="flex items-center gap-4">
+          <UserProfileDropdown />
+        </div>
+      </div>
+    </div>
   )
 }

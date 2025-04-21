@@ -1,7 +1,7 @@
 import type React from "react"
 import "@/app/globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
-import { AuthProvider } from "@/components/auth-provider"
+import { ClerkProvider } from "@/components/clerk-provider"
 import { cn } from "@/lib/utils"
 import type { Metadata } from "next"
 import { Manrope, Inter } from "next/font/google"
@@ -31,7 +31,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning className="dark">
       <body className={cn("min-h-screen bg-background font-sans antialiased", manrope.variable, inter.variable)}>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
-          <AuthProvider>{children}</AuthProvider>
+          <ClerkProvider>{children}</ClerkProvider>
         </ThemeProvider>
       </body>
     </html>

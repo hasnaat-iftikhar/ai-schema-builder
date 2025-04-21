@@ -1,30 +1,29 @@
-"use client"
-
 import type React from "react"
+import { auth, currentUser } from "@clerk/nextjs/server"
+import { redirect } from "next/navigation"
+import { AppSidebar } from "@/components/app-sidebar"
+import { NavSecondary } from "@/components/nav-secondary"
 
-import { Button } from "@/components/ui/button"
-import { ThemeToggle } from "@/components/theme-toggle"
-import {
-  SidebarProvider,
-  Sidebar,
-  SidebarContent,
-  SidebarHeader,
-  SidebarFooter,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarTrigger,
-} from "@/components/ui/sidebar"
-import { LayoutDashboard, User, FolderKanban, Users, Settings, LogOut } from "lucide-react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const pathname = usePathname()
+  const { userId } = auth()
 
-  return children;
+  if (!userId) {
+    redirect("/login")
+  }
+
+  const user = await currentUser()
+
+  return (
+    <div className="flex min-h-screen">
+      <AppSidebar />
+      <div className="flex flex-col flex-1">
+        <NavSecondary user={user} />
+        <main className="flex-1 p-6">{children}</main>
+      </div>
+    </div>
+  )
 }

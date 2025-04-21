@@ -1,27 +1,25 @@
 "use client"
 
 import { useEffect } from "react"
-import { signOut } from "next-auth/react"
 import { useRouter } from "next/navigation"
+import { useClerk } from "@clerk/nextjs"
 
 export default function LogoutPage() {
+  const { signOut } = useClerk()
   const router = useRouter()
 
   useEffect(() => {
-    const handleLogout = async () => {
-      await signOut({ redirect: false })
+    const performSignOut = async () => {
+      await signOut()
       router.push("/login")
     }
 
-    handleLogout()
-  }, [router])
+    performSignOut()
+  }, [signOut, router])
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-cryptic-background">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold mb-4">Logging out...</h1>
-        <p className="text-muted-foreground">You will be redirected shortly.</p>
-      </div>
+    <div className="flex min-h-screen flex-col items-center justify-center">
+      <p className="text-lg">Signing out...</p>
     </div>
   )
 }
