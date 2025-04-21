@@ -1,9 +1,9 @@
-import { SignUp } from "@clerk/nextjs"
+import SignupForm from "@/components/signup-form"
 
-export default function SignUpPage() {
+export default function SignupPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center">
-      <SignUp />
+    <div className="flex min-h-screen items-center justify-center bg-cryptic-background p-4">
+      <SignupForm />
     </div>
   )
 }

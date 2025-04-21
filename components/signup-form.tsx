@@ -1,80 +1,27 @@
 "use client"
 
-import type React from "react"
+import { SignUp } from "@clerk/nextjs"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { registerUser } from "@/lib/user-actions"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-
-export function SignupForm() {
-  const [name, setName] = useState("")
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [error, setError] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const router = useRouter()
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      const result = await registerUser({ name, email, password })
-
-      if (result.success) {
-        router.push("/login?registered=true")
-      } else {
-        setError(result.error || "Registration failed")
-      }
-    } catch (err) {
-      setError("An error occurred. Please try again.")
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
+export default function SignupForm() {
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Input
-          id="name"
-          type="text"
-          placeholder="Name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-          disabled={isLoading}
-        />
-      </div>
-      <div className="space-y-2">
-        <Input
-          id="email"
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          disabled={isLoading}
-        />
-      </div>
-      <div className="space-y-2">
-        <Input
-          id="password"
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          disabled={isLoading}
-        />
-      </div>
-      {error && <div className="text-red-500 text-sm">{error}</div>}
-      <Button type="submit" className="w-full" disabled={isLoading}>
-        {isLoading ? "Signing up..." : "Sign up"}
-      </Button>
-    </form>
+    <div className="w-full max-w-md">
+      <SignUp
+        appearance={{
+          elements: {
+            rootBox: "w-full",
+            card: "bg-cryptic-card border-cryptic-border",
+            headerTitle: "text-foreground",
+            headerSubtitle: "text-muted-foreground",
+            socialButtonsBlockButton: "bg-muted text-foreground border-border hover:bg-muted/80",
+            dividerLine: "bg-border",
+            formFieldLabel: "text-foreground",
+            formFieldInput: "bg-cryptic-background border-input text-foreground",
+            footerActionLink: "text-primary hover:text-primary/80",
+          },
+        }}
+        redirectUrl="/dashboard"
+        signInUrl="/login"
+      />
+    </div>
   )
 }
