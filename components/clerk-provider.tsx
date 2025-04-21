@@ -4,17 +4,23 @@ import type React from "react"
 
 import { ClerkProvider as ClerkProviderOriginal } from "@clerk/nextjs"
 import { dark } from "@clerk/themes"
-import { useTheme } from "next-themes"
 
 export function ClerkProvider({ children }: { children: React.ReactNode }) {
-  const { theme } = useTheme()
-
   return (
     <ClerkProviderOriginal
       appearance={{
-        baseTheme: theme === "dark" ? dark : undefined,
+        baseTheme: dark,
         variables: {
-          colorPrimary: "#0ea5e9",
+          colorPrimary: "hsl(var(--cryptic-accent))",
+          colorText: "white",
+          colorBackground: "hsl(var(--background))",
+          colorInputBackground: "hsl(var(--cryptic-card))",
+          colorInputText: "white",
+        },
+        elements: {
+          formButtonPrimary: "bg-cryptic-accent text-black hover:bg-cryptic-accent/90",
+          card: "bg-cryptic-card border-cryptic-border",
+          formFieldInput: "bg-cryptic-card border-cryptic-border",
         },
       }}
     >

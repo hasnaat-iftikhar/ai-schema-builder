@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: false, // Disable strict mode temporarily
+  reactStrictMode: true,
   swcMinify: true,
   eslint: {
     ignoreDuringBuilds: true,
@@ -10,17 +10,6 @@ const nextConfig = {
   },
   images: {
     domains: ['img.clerk.com'],
-    unoptimized: true,
-  },
-  // Add more detailed error logging
-  logging: {
-    fetches: {
-      fullUrl: true,
-    },
-  },
-  // Disable server components temporarily to isolate issues
-  experimental: {
-    serverActions: true,
   },
 };
 

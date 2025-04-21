@@ -1,24 +1,10 @@
-import type React from "react"
-import "@/app/globals.css"
-import { ClerkProvider } from "@clerk/nextjs"
-import { cn } from "@/lib/utils"
-import type { Metadata } from "next"
-import { Manrope, Inter } from "next/font/google"
-
-const manrope = Manrope({
-  subsets: ["latin"],
-  variable: "--font-manrope",
-})
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-display",
-})
+import type { Metadata } from 'next'
+import './globals.css'
 
 export const metadata: Metadata = {
-  title: "AI Schema Builder",
-  description: "Build database schemas with AI assistance",
-    generator: 'v0.dev'
+  title: 'v0 App',
+  description: 'Created with v0',
+  generator: 'v0.dev',
 }
 
 export default function RootLayout({
@@ -27,10 +13,8 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className="dark">
-      <body className={cn("min-h-screen bg-background font-sans antialiased", manrope.variable, inter.variable)}>
-        <ClerkProvider>{children}</ClerkProvider>
-      </body>
+    <html lang="en">
+      <body>{children}</body>
     </html>
   )
 }
