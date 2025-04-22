@@ -2,7 +2,7 @@
 
 import { SignUp } from "@clerk/nextjs"
 
-export default function SignupForm() {
+export function SignUpForm() {
   return (
     <div className="w-full max-w-md">
       <SignUp

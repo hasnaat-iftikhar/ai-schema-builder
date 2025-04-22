@@ -1,87 +1,37 @@
 "use client"
 
-import type * as React from "react"
-import { BookOpen, FolderKanban, GalleryVerticalEnd, Settings } from "lucide-react"
-
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { Button } from "@/components/ui/button"
 import { NavMain } from "@/components/nav-main"
 import { NavProjects } from "@/components/nav-projects"
+import { NavSecondary } from "@/components/nav-secondary"
 import { NavUser } from "@/components/nav-user"
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from "@/components/ui/sidebar"
+import { Sidebar } from "@/components/ui/sidebar"
 
-const data = {
-  user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
-  },
-  navMain: [
-    {
-      title: "Projects",
-      url: "/dashboard/projects",
-      icon: FolderKanban,
-      isActive: true,
-    },
-    {
-      title: "Documentation",
-      url: "/dashboard/documentation",
-      icon: BookOpen,
-    },
-    {
-      title: "Settings",
-      url: "/dashboard/settings",
-      icon: Settings,
-    },
-  ],
-  projects: [
-    {
-      name: "E-commerce Database",
-      url: "/dashboard/projects/1",
-    },
-    {
-      name: "Blog Platform",
-      url: "/dashboard/projects/2",
-    },
-    {
-      name: "Task Management App",
-      url: "/dashboard/projects/3",
-    },
-  ],
-}
+export function AppSidebar() {
+  const pathname = usePathname()
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
-    <Sidebar variant="inset" className="border-r border-white/10" {...props}>
-      <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild>
-              <a href="/dashboard" className="flex justify-start items-center gap-2">
-                <div className="flex h-6 w-6 items-center justify-center rounded-md bg-cryptic-accent text-black">
-                  <GalleryVerticalEnd className="size-4" />
-                </div>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">AI Schema Builder</span>
-                </div>
-              </a>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarHeader>
-      <SidebarContent>
-        <NavMain items={data.navMain} />
-        <NavProjects projects={data.projects} />
-      </SidebarContent>
-      <SidebarFooter>
-        <NavUser user={data.user} />
-      </SidebarFooter>
+    <Sidebar className="border-r bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="flex h-full flex-col">
+        <div className="flex h-14 items-center px-4 border-b">
+          <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
+            <span className="text-lg">AI Schema Builder</span>
+          </Link>
+          <Button variant="outline" size="icon" className="ml-auto h-8 w-8 lg:hidden">
+            <span className="sr-only">Toggle navigation</span>
+          </Button>
+        </div>
+        <div className="flex-1 overflow-auto py-2">
+          <NavMain />
+          <NavProjects />
+        </div>
+        <NavSecondary />
+        <div className="mt-auto p-4 border-t">
+          <NavUser />
+        </div>
+      </div>
     </Sidebar>
   )
 }

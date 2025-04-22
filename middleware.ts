@@ -1,19 +1,7 @@
-import { clerkMiddleware } from "@clerk/nextjs/server"
+import { authMiddleware } from "@clerk/nextjs"
 
-export default clerkMiddleware({
-  // Routes that can be accessed while signed out
-  publicRoutes: [
-    "/",
-    "/login",
-    "/signup",
-    "/api/health",
-    // Add any other public routes here
-  ],
-  // Routes that can always be accessed, and have no authentication information
-  ignoredRoutes: [
-    "/api/health",
-    // Add any routes that should bypass authentication checks completely
-  ],
+export default authMiddleware({
+  publicRoutes: ["/", "/login", "/signup", "/api/health"],
 })
 
 export const config = {

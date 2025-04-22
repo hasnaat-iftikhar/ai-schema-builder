@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react"
 
-export function AnimatedBackground() {
+export default function AnimatedBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
@@ -13,87 +13,107 @@ export function AnimatedBackground() {
     if (!ctx) return
 
     // Set canvas dimensions
-    const resizeCanvas = () => {
+    const setCanvasDimensions = () => {
       canvas.width = window.innerWidth
       canvas.height = window.innerHeight
     }
 
-    resizeCanvas()
-    window.addEventListener("resize", resizeCanvas)
+    setCanvasDimensions()
+    window.addEventListener("resize", setCanvasDimensions)
 
-    // Line properties
-    const lines: Line[] = []
-    const lineCount = 15
-
-    class Line {
+    // Particle class
+    class Particle {
       x: number
       y: number
-      length: number
-      opacity: number
-      direction: number
-      speed: number
-      width: number
+      size: number
+      speedX: number
+      speedY: number
+      color: string
 
       constructor() {
         this.x = Math.random() * canvas.width
         this.y = Math.random() * canvas.height
-        this.length = Math.random() * 150 + 50
-        this.opacity = Math.random() * 0.15 + 0.05
-        this.direction = Math.random() * Math.PI * 2
-        this.speed = Math.random() * 0.5 + 0.1
-        this.width = Math.random() * 1 + 0.5
+        this.size = Math.random() * 2 + 0.5
+        this.speedX = Math.random() * 0.5 - 0.25
+        this.speedY = Math.random() * 0.5 - 0.25
+        this.color = `rgba(255, 255, 255, ${Math.random() * 0.5 + 0.1})`
+      }
+
+      update() {
+        this.x += this.speedX
+        this.y += this.speedY
+
+        if (this.x < 0 || this.x > canvas.width) {
+          this.speedX = -this.speedX
+        }
+
+        if (this.y < 0 || this.y > canvas.height) {
+          this.speedY = -this.speedY
+        }
       }
 
       draw() {
         if (!ctx) return
-
-        const endX = this.x + Math.cos(this.direction) * this.length
-        const endY = this.y + Math.sin(this.direction) * this.length
-
+        ctx.fillStyle = this.color
         ctx.beginPath()
-        ctx.moveTo(this.x, this.y)
-        ctx.lineTo(endX, endY)
-        ctx.strokeStyle = `rgba(197, 252, 112, ${this.opacity})`
-        ctx.lineWidth = this.width
-        ctx.stroke()
-      }
-
-      update() {
-        this.x += Math.cos(this.direction) * this.speed
-        this.y += Math.sin(this.direction) * this.speed
-
-        // Wrap around edges
-        if (this.x < -this.length) this.x = canvas.width + this.length
-        if (this.x > canvas.width + this.length) this.x = -this.length
-        if (this.y < -this.length) this.y = canvas.height + this.length
-        if (this.y > canvas.height + this.length) this.y = -this.length
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2)
+        ctx.fill()
       }
     }
 
-    // Create lines
-    for (let i = 0; i < lineCount; i++) {
-      lines.push(new Line())
+    // Create particles
+    const particlesArray: Particle[] = []
+    const numberOfParticles = Math.min(100, (canvas.width * canvas.height) / 15000)
+
+    for (let i = 0; i < numberOfParticles; i++) {
+      particlesArray.push(new Particle())
     }
 
     // Animation loop
     const animate = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-      // Draw and update lines
-      lines.forEach((line) => {
-        line.draw()
-        line.update()
-      })
+      // Draw and update particles
+      for (let i = 0; i < particlesArray.length; i++) {
+        particlesArray[i].update()
+        particlesArray[i].draw()
+      }
+
+      // Draw connections
+      connectParticles()
 
       requestAnimationFrame(animate)
+    }
+
+    // Connect particles with lines
+    const connectParticles = () => {
+      const maxDistance = 150
+
+      for (let a = 0; a < particlesArray.length; a++) {
+        for (let b = a; b < particlesArray.length; b++) {
+          const dx = particlesArray[a].x - particlesArray[b].x
+          const dy = particlesArray[a].y - particlesArray[b].y
+          const distance = Math.sqrt(dx * dx + dy * dy)
+
+          if (distance < maxDistance) {
+            const opacity = 1 - distance / maxDistance
+            ctx.strokeStyle = `rgba(255, 255, 255, ${opacity * 0.2})`
+            ctx.lineWidth = 1
+            ctx.beginPath()
+            ctx.moveTo(particlesArray[a].x, particlesArray[a].y)
+            ctx.lineTo(particlesArray[b].x, particlesArray[b].y)
+            ctx.stroke()
+          }
+        }
+      }
     }
 
     animate()
 
     return () => {
-      window.removeEventListener("resize", resizeCanvas)
+      window.removeEventListener("resize", setCanvasDimensions)
     }
   }, [])
 
-  return <canvas ref={canvasRef} className="absolute inset-0 bg-cryptic-background" />
+  return <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full bg-black" />
 }
