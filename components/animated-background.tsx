@@ -21,113 +21,70 @@ export function AnimatedBackground() {
     resizeCanvas()
     window.addEventListener("resize", resizeCanvas)
 
-    // Particle properties
-    const particles: Particle[] = []
-    const particleCount = 100
-    const connectionDistance = 150
-    const mouseRadius = 100
+    // Line properties
+    const lines: Line[] = []
+    const lineCount = 15
 
-    // Mouse position
-    const mouse = {
-      x: null as number | null,
-      y: null as number | null,
-    }
-
-    // Track mouse position
-    window.addEventListener("mousemove", (event) => {
-      mouse.x = event.x
-      mouse.y = event.y
-    })
-
-    class Particle {
+    class Line {
       x: number
       y: number
-      size: number
-      speedX: number
-      speedY: number
-      color: string
+      length: number
+      opacity: number
+      direction: number
+      speed: number
+      width: number
 
       constructor() {
         this.x = Math.random() * canvas.width
         this.y = Math.random() * canvas.height
-        this.size = Math.random() * 1.5 + 0.5
-        this.speedX = (Math.random() - 0.5) * 0.5
-        this.speedY = (Math.random() - 0.5) * 0.5
-        this.color = "rgba(77, 156, 255, 0.5)"
-      }
-
-      update() {
-        // Move particles
-        this.x += this.speedX
-        this.y += this.speedY
-
-        // Wrap around edges
-        if (this.x < 0) this.x = canvas.width
-        if (this.x > canvas.width) this.x = 0
-        if (this.y < 0) this.y = canvas.height
-        if (this.y > canvas.height) this.y = 0
-
-        // Mouse interaction
-        if (mouse.x !== null && mouse.y !== null) {
-          const dx = mouse.x - this.x
-          const dy = mouse.y - this.y
-          const distance = Math.sqrt(dx * dx + dy * dy)
-
-          if (distance < mouseRadius) {
-            const angle = Math.atan2(dy, dx)
-            this.x -= Math.cos(angle) * 1
-            this.y -= Math.sin(angle) * 1
-          }
-        }
+        this.length = Math.random() * 150 + 50
+        this.opacity = Math.random() * 0.15 + 0.05
+        this.direction = Math.random() * Math.PI * 2
+        this.speed = Math.random() * 0.5 + 0.1
+        this.width = Math.random() * 1 + 0.5
       }
 
       draw() {
         if (!ctx) return
+
+        const endX = this.x + Math.cos(this.direction) * this.length
+        const endY = this.y + Math.sin(this.direction) * this.length
+
         ctx.beginPath()
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2)
-        ctx.fillStyle = this.color
-        ctx.fill()
+        ctx.moveTo(this.x, this.y)
+        ctx.lineTo(endX, endY)
+        ctx.strokeStyle = `rgba(197, 252, 112, ${this.opacity})`
+        ctx.lineWidth = this.width
+        ctx.stroke()
+      }
+
+      update() {
+        this.x += Math.cos(this.direction) * this.speed
+        this.y += Math.sin(this.direction) * this.speed
+
+        // Wrap around edges
+        if (this.x < -this.length) this.x = canvas.width + this.length
+        if (this.x > canvas.width + this.length) this.x = -this.length
+        if (this.y < -this.length) this.y = canvas.height + this.length
+        if (this.y > canvas.height + this.length) this.y = -this.length
       }
     }
 
-    // Create particles
-    for (let i = 0; i < particleCount; i++) {
-      particles.push(new Particle())
-    }
-
-    // Connect particles that are close to each other
-    function connectParticles() {
-      for (let i = 0; i < particles.length; i++) {
-        for (let j = i + 1; j < particles.length; j++) {
-          const dx = particles[i].x - particles[j].x
-          const dy = particles[i].y - particles[j].y
-          const distance = Math.sqrt(dx * dx + dy * dy)
-
-          if (distance < connectionDistance) {
-            if (!ctx) return
-            ctx.beginPath()
-            ctx.strokeStyle = `rgba(77, 156, 255, ${0.1 * (1 - distance / connectionDistance)})`
-            ctx.lineWidth = 0.5
-            ctx.moveTo(particles[i].x, particles[i].y)
-            ctx.lineTo(particles[j].x, particles[j].y)
-            ctx.stroke()
-          }
-        }
-      }
+    // Create lines
+    for (let i = 0; i < lineCount; i++) {
+      lines.push(new Line())
     }
 
     // Animation loop
     const animate = () => {
-      if (!ctx) return
       ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-      // Update and draw particles
-      particles.forEach((particle) => {
-        particle.update()
-        particle.draw()
+      // Draw and update lines
+      lines.forEach((line) => {
+        line.draw()
+        line.update()
       })
 
-      connectParticles()
       requestAnimationFrame(animate)
     }
 
@@ -135,12 +92,8 @@ export function AnimatedBackground() {
 
     return () => {
       window.removeEventListener("resize", resizeCanvas)
-      window.removeEventListener("mousemove", (event) => {
-        mouse.x = event.x
-        mouse.y = event.y
-      })
     }
   }, [])
 
-  return <canvas ref={canvasRef} className="fixed inset-0 -z-10 bg-ameta-background" />
+  return <canvas ref={canvasRef} className="absolute inset-0 bg-cryptic-background" />
 }

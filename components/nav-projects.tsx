@@ -1,57 +1,35 @@
 "use client"
 
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { FolderPlus } from "lucide-react"
+import { Trash2 } from "lucide-react"
+import { SidebarGroup, SidebarGroupLabel, SidebarMenu, SidebarMenuItem, useSidebar } from "@/components/ui/sidebar"
 
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import {
-  SidebarGroup,
-  SidebarGroupAction,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from "@/components/ui/sidebar"
-
-interface NavProjectsProps {
-  projects?: {
+export function NavProjects({
+  projects,
+}: {
+  projects: {
     name: string
     url: string
   }[]
-}
-
-export function NavProjects({ projects = [] }: NavProjectsProps) {
-  const pathname = usePathname()
+}) {
+  const { isMobile } = useSidebar()
 
   return (
-    <SidebarGroup>
+    <SidebarGroup className="group-data-[collapsible=icon]:hidden">
       <SidebarGroupLabel>Projects</SidebarGroupLabel>
-      <SidebarGroupAction asChild>
-        <Button variant="ghost" size="icon" className="h-5 w-5">
-          <FolderPlus className="h-4 w-4" />
-          <span className="sr-only">Add Project</span>
-        </Button>
-      </SidebarGroupAction>
-      <SidebarGroupContent>
-        <SidebarMenu>
-          {projects.map((project) => {
-            const isActive = pathname === project.url
+      <SidebarMenu className="flex flex-col gap-1">
+        {projects.map((item) => (
+          <SidebarMenuItem key={item.name} className="">
+            <a
+              href={item.url}
+              className="group text-sm rounded-[8px] h-[42px] px-[16px] flex justify-start items-center gap-3 hover:bg-[#ffffff1a]"
+            >
+              <span className="flex-1">{item.name}</span>
 
-            return (
-              <SidebarMenuItem key={project.name}>
-                <SidebarMenuButton asChild isActive={isActive}>
-                  <Link href={project.url} className={cn("flex items-center gap-3")}>
-                    <span>{project.name}</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            )
-          })}
-        </SidebarMenu>
-      </SidebarGroupContent>
+              <Trash2 className="opacity-0 group-hover:opacity-100 text-red-500" width={16} height={16} />
+            </a>
+          </SidebarMenuItem>
+        ))}
+      </SidebarMenu>
     </SidebarGroup>
   )
 }
