@@ -1,55 +1,35 @@
 "use client"
 
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { cn } from "@/lib/utils"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Database, Plus } from "lucide-react"
+import { Trash2 } from "lucide-react"
+import { SidebarGroup, SidebarGroupLabel, SidebarMenu, SidebarMenuItem, useSidebar } from "@/components/ui/sidebar"
 
-export function NavProjects() {
-  const pathname = usePathname()
-
-  // Mock projects data
-  const projects = [
-    { id: "1", name: "E-commerce Platform" },
-    { id: "2", name: "Blog System" },
-    { id: "3", name: "User Management" },
-  ]
+export function NavProjects({
+  projects,
+}: {
+  projects: {
+    name: string
+    url: string
+  }[]
+}) {
+  const { isMobile } = useSidebar()
 
   return (
-    <div className="px-3 py-2">
-      <div className="flex items-center justify-between px-4">
-        <h2 className="text-xs font-semibold tracking-tight">Projects</h2>
-        <Link href="/dashboard/projects/new">
-          <Button variant="ghost" size="icon" className="h-5 w-5">
-            <Plus className="h-3.5 w-3.5" />
-            <span className="sr-only">New Project</span>
-          </Button>
-        </Link>
-      </div>
-      <div className="space-y-1 py-2">
-        {projects.map((project) => (
-          <Link
-            key={project.id}
-            href={`/dashboard/projects/${project.id}`}
-            className={cn(
-              "flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-              pathname === `/dashboard/projects/${project.id}` ? "bg-accent text-accent-foreground" : "transparent",
-            )}
-          >
-            <span className="flex items-center gap-3">
-              <Database className="h-4 w-4" />
-              <span className="truncate">{project.name}</span>
-            </span>
-            {project.id === "1" && (
-              <Badge variant="outline" className="ml-2">
-                New
-              </Badge>
-            )}
-          </Link>
+    <SidebarGroup className="group-data-[collapsible=icon]:hidden">
+      <SidebarGroupLabel>Projects</SidebarGroupLabel>
+      <SidebarMenu className="flex flex-col gap-1">
+        {projects.map((item) => (
+          <SidebarMenuItem key={item.name} className="">
+            <a
+              href={item.url}
+              className="group text-sm rounded-[8px] h-[42px] px-[16px] flex justify-start items-center gap-3 hover:bg-[#ffffff1a]"
+            >
+              <span className="flex-1">{item.name}</span>
+
+              <Trash2 className="opacity-0 group-hover:opacity-100 text-red-500" width={16} height={16} />
+            </a>
+          </SidebarMenuItem>
         ))}
-      </div>
-    </div>
+      </SidebarMenu>
+    </SidebarGroup>
   )
 }

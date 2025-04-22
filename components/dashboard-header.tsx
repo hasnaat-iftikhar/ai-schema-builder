@@ -1,17 +1,16 @@
-import Link from "next/link"
 import { UserProfileDropdown } from "@/components/user-profile-dropdown"
 
 export function DashboardHeader() {
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background px-4">
-      <div className="flex items-center gap-2">
-        <Link href="/dashboard" className="flex items-center gap-2">
-          <span className="text-xl font-bold">AI Schema Builder</span>
-        </Link>
+    <div className="border-b border-white/10">
+      <div className="flex h-16 items-center px-4 justify-between">
+        <div className="flex items-center gap-4">
+          <h1 className="text-xl font-semibold">AI Schema Builder</h1>
+        </div>
+        <div className="flex items-center gap-4">
+          <UserProfileDropdown />
+        </div>
       </div>
-      <div className="flex items-center gap-4">
-        <UserProfileDropdown />
-      </div>
-    </header>
+    </div>
   )
 }

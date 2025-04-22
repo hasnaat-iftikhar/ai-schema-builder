@@ -1,6 +1,8 @@
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   DropdownMenu,
@@ -10,42 +12,51 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { LogOut, Settings, User } from "lucide-react"
 
 export function UserProfileDropdown() {
-  // Mock user data since we've removed authentication
-  const user = {
-    name: "Demo User",
-    email: "demo@example.com",
-    image: "/avatars/shadcn.jpg",
+  const router = useRouter()
+  const [isOpen, setIsOpen] = useState(false)
+
+  const handleLogout = () => {
+    // Simulate logout
+    router.push("/login")
   }
 
   return (
-    <DropdownMenu>
+    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
-        <button className="flex items-center gap-2 rounded-full focus:outline-none focus:ring-2 focus:ring-ring">
+        <button className="flex items-center gap-2 rounded-full focus:outline-none">
           <Avatar className="h-8 w-8">
-            <AvatarImage src={user.image || "/placeholder.svg"} alt={user.name} />
-            <AvatarFallback>DU</AvatarFallback>
+            <AvatarImage src="/avatars/shadcn.jpg" alt="User" />
+            <AvatarFallback>JD</AvatarFallback>
           </Avatar>
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel>
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium">{user.name}</p>
-            <p className="text-xs text-muted-foreground">{user.email}</p>
+            <p className="text-sm font-medium">shadcn</p>
+            <p className="text-xs text-muted-foreground">m@example.com</p>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link href="/dashboard/profile">Profile</Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href="/dashboard/settings">Settings</Link>
-        </DropdownMenuItem>
+        <Link href="/dashboard/profile">
+          <DropdownMenuItem>
+            <User className="mr-2 h-4 w-4" />
+            <span>Profile</span>
+          </DropdownMenuItem>
+        </Link>
+        <Link href="/dashboard/settings">
+          <DropdownMenuItem>
+            <Settings className="mr-2 h-4 w-4" />
+            <span>Settings</span>
+          </DropdownMenuItem>
+        </Link>
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link href="/logout">Log out</Link>
+        <DropdownMenuItem onClick={handleLogout}>
+          <LogOut className="mr-2 h-4 w-4" />
+          <span>Log out</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
