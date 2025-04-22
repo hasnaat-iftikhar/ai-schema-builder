@@ -1,19 +1,16 @@
-"use client"
-
-import { UserButton } from "@clerk/nextjs"
+import Link from "next/link"
+import { UserProfileDropdown } from "@/components/user-profile-dropdown"
 
 export function DashboardHeader() {
   return (
-    <header className="border-b border-cryptic-border bg-cryptic-card p-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">Dashboard</h1>
-        <UserButton
-          appearance={{
-            elements: {
-              userButtonBox: "h-8 w-8",
-            },
-          }}
-        />
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background px-4">
+      <div className="flex items-center gap-2">
+        <Link href="/dashboard" className="flex items-center gap-2">
+          <span className="text-xl font-bold">AI Schema Builder</span>
+        </Link>
+      </div>
+      <div className="flex items-center gap-4">
+        <UserProfileDropdown />
       </div>
     </header>
   )

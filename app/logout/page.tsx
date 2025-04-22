@@ -2,24 +2,23 @@
 
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { useClerk } from "@clerk/nextjs"
 
 export default function LogoutPage() {
-  const { signOut } = useClerk()
   const router = useRouter()
 
   useEffect(() => {
-    const performSignOut = async () => {
-      await signOut()
+    // Simple redirect to login page
+    setTimeout(() => {
       router.push("/login")
-    }
-
-    performSignOut()
-  }, [signOut, router])
+    }, 1000)
+  }, [router])
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center">
-      <p className="text-lg">Signing out...</p>
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background">
+      <div className="text-center">
+        <h1 className="text-2xl font-bold mb-4">Logging out...</h1>
+        <p className="text-muted-foreground">Redirecting to login page...</p>
+      </div>
     </div>
   )
 }
