@@ -49,26 +49,26 @@
   }
 
   .dark {
-    /* Cryptic color scheme */
-    --background: 240 6% 6%; /* #0E0E10 */
+    /* Updated color scheme to match the design */
+    --background: 220 13% 8%; /* #0F1216 - darker background */
     --foreground: 0 0% 98%;
-    --card: 240 5% 9%; /* #171719 */
+    --card: 220 13% 10%; /* #141A21 - slightly lighter than background */
     --card-foreground: 0 0% 98%;
-    --popover: 240 5% 9%; /* #171719 */
+    --popover: 220 13% 10%;
     --popover-foreground: 0 0% 98%;
-    --primary: 84 96% 71%; /* #C5FC70 */
+    --primary: 210 100% 66%; /* #4D9CFF - blue accent color */
     --primary-foreground: 240 10% 3.9%;
-    --secondary: 240 3% 11%; /* #1B1A1D */
+    --secondary: 220 13% 12%; /* #1A2029 - slightly lighter than card */
     --secondary-foreground: 0 0% 98%;
-    --muted: 240 3% 11%; /* #1B1A1D */
+    --muted: 220 13% 12%;
     --muted-foreground: 240 5% 64.9%;
-    --accent: 84 96% 71%; /* #C5FC70 */
+    --accent: 210 100% 66%;
     --accent-foreground: 240 10% 3.9%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 2% 12%; /* #1C1B1E */
-    --input: 240 2% 12%; /* #1C1B1E */
-    --ring: 84 96% 71%; /* #C5FC70 */
+    --border: 220 13% 15%; /* #1F2631 - subtle border color */
+    --input: 220 13% 15%;
+    --ring: 210 100% 66%;
   }
 }
 
@@ -93,4 +93,73 @@
 
 .font-display {
   font-family: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Custom gradient backgrounds */
+.gradient-bg {
+  background: linear-gradient(to bottom right, rgba(77, 156, 255, 0.1), rgba(77, 156, 255, 0));
+}
+
+.dashboard-glow {
+  box-shadow: 0 0 40px rgba(77, 156, 255, 0.15);
+}
+
+/* Dot pattern for background */
+.dot-pattern {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Pricing table styles */
+.pricing-card {
+  @apply relative rounded-2xl border border-white/10 bg-card p-6 transition-all duration-300;
+}
+
+.pricing-card:hover {
+  @apply border-primary/30 shadow-lg;
+  box-shadow: 0 0 30px rgba(77, 156, 255, 0.1);
+}
+
+.pricing-feature {
+  @apply flex items-center gap-2 py-1.5;
+}
+
+.pricing-check {
+  @apply text-primary;
+}
+
+.pricing-x {
+  @apply text-muted-foreground;
+}
+
+/* Feature card styles */
+.feature-card {
+  @apply rounded-2xl border border-white/10 bg-card p-6 transition-all duration-300;
+}
+
+.feature-card:hover {
+  @apply border-primary/30;
+  box-shadow: 0 0 30px rgba(77, 156, 255, 0.1);
+}
+
+.feature-icon {
+  @apply mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary;
 }
