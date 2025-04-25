@@ -97,7 +97,7 @@ export default function CreateProjectPage() {
       <SidebarInset className="bg-cryptic-background">
         <header className="flex h-16 items-center gap-4 border-b border-white/10 px-6">
           <SidebarTrigger />
-          <h1 className="text-xl font-semibold">{projectName || "New Project"}</h1>
+          <h1 className="text-xl font-semibold">Schema Designer</h1>
         </header>
         <div className="flex flex-1 h-[calc(100vh-64px)] w-full">{renderActiveView()}</div>
       </SidebarInset>

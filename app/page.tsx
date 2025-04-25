@@ -66,7 +66,7 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="mt-24 grid gap-8 md:grid-cols-3">
+          <div className="mt-24 grid gap-8 md:grid-cols-2">
             <div className="rounded-2xl border border-white/10 bg-cryptic-card p-6">
               <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-cryptic-accent/20 text-cryptic-accent">
                 <svg
@@ -88,32 +88,6 @@ export default function Home() {
               <h3 className="font-display text-xl font-bold">Visual Schema Design</h3>
               <p className="mt-2 text-sm text-white/70">
                 Drag and drop interface for creating database tables and relationships with ease.
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-white/10 bg-cryptic-card p-6">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-cryptic-accent/20 text-cryptic-accent">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-6 w-6"
-                >
-                  <path d="M12 8V4H8" />
-                  <rect width="16" height="12" x="4" y="8" rx="2" />
-                  <path d="M2 14h2" />
-                  <path d="M20 14h2" />
-                  <path d="M15 13v2" />
-                  <path d="M9 13v2" />
-                </svg>
-              </div>
-              <h3 className="font-display text-xl font-bold">AI Assistant</h3>
-              <p className="mt-2 text-sm text-white/70">
-                Get intelligent suggestions and optimizations for your database schema using natural language.
               </p>
             </div>
 

@@ -42,7 +42,7 @@ interface CodeViewProps {
   onRelationshipsChange: (relationships: Relationship[]) => void
 }
 
-export function CodeView({ tables, relationships, onTablesChange, onRelationshipsChange }: CodeViewProps) {
+export function CodeView({ tables = [], relationships = [], onTablesChange, onRelationshipsChange }: CodeViewProps) {
   const [activeSubView, setActiveSubView] = useState<"diagram" | "code">("diagram")
   const [selectedTable, setSelectedTable] = useState<string | null>(null)
   const [propertiesOpen, setPropertiesOpen] = useState(false)
@@ -154,6 +154,11 @@ datasource db {
 `
     })
 
+    // Add relationships
+    if (relationships.length > 0) {
+      code += "\n// Relationships are represented in the model fields above\n"
+    }
+
     return code
   }
 
@@ -168,10 +173,14 @@ datasource db {
               const newId = `t${tables.length + 1}`
               const newTable: TableData = {
                 id: newId,
-                name: "Untitled",
+                name: "NewTable",
                 x: 100,
                 y: 100,
-                columns: [],
+                columns: [
+                  { name: "id", type: "uuid", isPrimary: true },
+                  { name: "created_at", type: "timestamp" },
+                  { name: "updated_at", type: "timestamp" },
+                ],
               }
               onTablesChange([...tables, newTable])
               setNewTableCreated(newId) // Set the new table ID to trigger auto-open
