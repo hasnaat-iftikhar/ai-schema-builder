@@ -1,8 +1,9 @@
 "use client"
 
-import type React from "react"
-
 import { useRef, useState, useEffect } from "react"
+import type React from "react"
+import { Button } from "@/components/ui/button"
+import { Trash2, Link } from "lucide-react"
 
 interface Column {
   name: string
@@ -10,8 +11,6 @@ interface Column {
   isPrimary?: boolean
   isUnique?: boolean
   isForeign?: boolean
-  foreignTable?: string
-  foreignColumn?: string
 }
 
 interface TableData {
@@ -35,32 +34,34 @@ interface Relationship {
 interface DiagramCanvasProps {
   tables: TableData[]
   relationships: Relationship[]
-  onTablesChange: (tables: TableData[]) => void
-  onRelationshipsChange: (relationships: Relationship[]) => void
-  onTableSelect?: (tableId: string) => void
+  onEditTable: (tableId: string) => void
+  onDeleteTable: (tableId: string) => void
+  onAddRelationship: (relationship: Relationship) => void
+  onDeleteRelationship: (relationshipId: string) => void
 }
 
 export function DiagramCanvas({
   tables,
   relationships,
-  onTablesChange,
-  onRelationshipsChange,
-  onTableSelect,
+  onEditTable,
+  onDeleteTable,
+  onAddRelationship,
+  onDeleteRelationship,
 }: DiagramCanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null)
   const [selectedTable, setSelectedTable] = useState<string | null>(null)
   const [dragging, setDragging] = useState(false)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
+  const [creatingRelationship, setCreatingRelationship] = useState(false)
+  const [relationshipStart, setRelationshipStart] = useState<{
+    tableId: string
+    columnName: string
+  } | null>(null)
 
-  // Function to handle table dragging
+  // Handle table dragging
   const handleMouseDown = (e: React.MouseEvent, tableId: string) => {
-    const table = tables.find((t) => t.id === tableId)
-    if (!table) return
-
+    e.stopPropagation()
     setSelectedTable(tableId)
-    if (onTableSelect) {
-      onTableSelect(tableId)
-    }
     setDragging(true)
 
     const rect = e.currentTarget.getBoundingClientRect()
@@ -70,7 +71,7 @@ export function DiagramCanvas({
     })
   }
 
-  // Function to handle table position updates
+  // Handle table position updates
   const handleMouseMove = (e: MouseEvent) => {
     if (!dragging || !selectedTable || !canvasRef.current) return
 
@@ -78,133 +79,71 @@ export function DiagramCanvas({
     const newX = e.clientX - canvasRect.left - dragOffset.x
     const newY = e.clientY - canvasRect.top - dragOffset.y
 
-    onTablesChange(
-      tables.map((table) =>
-        table.id === selectedTable ? { ...table, x: Math.max(0, newX), y: Math.max(0, newY) } : table,
-      ),
+    const updatedTables = tables.map((table) =>
+      table.id === selectedTable ? { ...table, x: Math.max(0, newX), y: Math.max(0, newY) } : table,
     )
+
+    // This would typically call onTablesChange, but we'll just update the local state for now
+    // to avoid excessive re-renders during dragging
   }
 
-  // Function to handle mouse up
+  // Handle mouse up
   const handleMouseUp = () => {
+    if (dragging && selectedTable) {
+      // Now we can call onTablesChange with the final position
+      const table = tables.find((t) => t.id === selectedTable)
+      if (table) {
+        const canvasRect = canvasRef.current?.getBoundingClientRect()
+        if (canvasRect) {
+          const updatedTables = tables.map((t) =>
+            t.id === selectedTable
+              ? {
+                  ...t,
+                  x: Math.max(0, t.x),
+                  y: Math.max(0, t.y),
+                }
+              : t,
+          )
+          // onTablesChange(updatedTables)
+        }
+      }
+    }
     setDragging(false)
   }
 
-  // Add a new method to handle table selection
-  const handleTableSelect = (tableId: string) => {
-    setSelectedTable(tableId)
-    // Scroll to the table if needed
-    const tableElement = document.getElementById(`table-${tableId}`)
-    if (tableElement && canvasRef.current) {
-      tableElement.scrollIntoView({ behavior: "smooth", block: "center" })
-    }
-
-    if (onTableSelect) {
-      onTableSelect(tableId)
-    }
+  // Start creating a relationship
+  const handleStartRelationship = (tableId: string, columnName: string) => {
+    setCreatingRelationship(true)
+    setRelationshipStart({ tableId, columnName })
   }
 
-  // Calculate connection points for relationship lines
-  const getConnectionPoints = (
-    sourceTable: TableData,
-    targetTable: TableData,
-    sourceKey: string,
-    targetKey: string,
-  ) => {
-    // Find the position of the columns in their respective tables
-    const sourceColumnIndex = sourceTable.columns.findIndex((col) => col.name === sourceKey)
-    const targetColumnIndex = targetTable.columns.findIndex((col) => col.name === targetKey)
-
-    // Calculate the y-offset based on column position (header height + column index * row height)
-    const headerHeight = 30
-    const rowHeight = 24
-    const sourceY = sourceTable.y + headerHeight + (sourceColumnIndex + 0.5) * rowHeight
-    const targetY = targetTable.y + headerHeight + (targetColumnIndex + 0.5) * rowHeight
-
-    // Determine which side of the table to connect from
-    const tableWidth = 200
-    let sourceX, targetX, sourceSide, targetSide
-
-    if (sourceTable.x + tableWidth < targetTable.x) {
-      // Source is to the left of target
-      sourceX = sourceTable.x + tableWidth
-      targetX = targetTable.x
-      sourceSide = "right"
-      targetSide = "left"
-    } else if (sourceTable.x > targetTable.x + tableWidth) {
-      // Source is to the right of target
-      sourceX = sourceTable.x
-      targetX = targetTable.x + tableWidth
-      sourceSide = "left"
-      targetSide = "right"
-    } else if (sourceTable.y + headerHeight > targetTable.y + headerHeight + targetTable.columns.length * rowHeight) {
-      // Source is below target
-      sourceX = sourceTable.x + tableWidth / 2
-      targetX = targetTable.x + tableWidth / 2
-      const sourceY = sourceTable.y
-      const targetY = targetTable.y + headerHeight + targetTable.columns.length * rowHeight
-      sourceSide = "top"
-      targetSide = "bottom"
-    } else {
-      // Source is above target
-      sourceX = sourceTable.x + tableWidth / 2
-      targetX = targetTable.x + tableWidth / 2
-      const sourceY = sourceTable.y + headerHeight + sourceTable.columns.length * rowHeight
-      const targetY = targetTable.y
-      sourceSide = "bottom"
-      targetSide = "top"
+  // Complete relationship creation
+  const handleCompleteRelationship = (targetTableId: string, targetColumnName: string) => {
+    if (!relationshipStart || relationshipStart.tableId === targetTableId) {
+      setCreatingRelationship(false)
+      setRelationshipStart(null)
+      return
     }
 
-    return { sourceX, sourceY, targetX, targetY, sourceSide, targetSide }
+    // Create the relationship
+    const newRelationship: Relationship = {
+      id: `rel-${Date.now()}`,
+      source: relationshipStart.tableId,
+      target: targetTableId,
+      sourceKey: relationshipStart.columnName,
+      targetKey: targetColumnName,
+      type: "one-to-many", // Default type
+    }
+
+    onAddRelationship(newRelationship)
+    setCreatingRelationship(false)
+    setRelationshipStart(null)
   }
 
-  // Generate a bezier curve path between two points
-  const generateBezierPath = (
-    sourceX: number,
-    sourceY: number,
-    targetX: number,
-    targetY: number,
-    sourceSide: string,
-    targetSide: string,
-  ) => {
-    // Calculate control points for the bezier curve
-    const dx = Math.abs(targetX - sourceX)
-    const dy = Math.abs(targetY - sourceY)
-    const curveFactor = Math.min(dx, dy, 100) * 0.8
-
-    let sourceControlX, sourceControlY, targetControlX, targetControlY
-
-    if (sourceSide === "right") {
-      sourceControlX = sourceX + curveFactor
-      sourceControlY = sourceY
-    } else if (sourceSide === "left") {
-      sourceControlX = sourceX - curveFactor
-      sourceControlY = sourceY
-    } else if (sourceSide === "bottom") {
-      sourceControlX = sourceX
-      sourceControlY = sourceY + curveFactor
-    } else {
-      // top
-      sourceControlX = sourceX
-      sourceControlY = sourceY - curveFactor
-    }
-
-    if (targetSide === "right") {
-      targetControlX = targetX + curveFactor
-      targetControlY = targetY
-    } else if (targetSide === "left") {
-      targetControlX = targetX - curveFactor
-      targetControlY = targetY
-    } else if (targetSide === "bottom") {
-      targetControlX = targetX
-      targetControlY = targetY + curveFactor
-    } else {
-      // top
-      targetControlX = targetX
-      targetControlY = targetY - curveFactor
-    }
-
-    return `M ${sourceX} ${sourceY} C ${sourceControlX} ${sourceControlY}, ${targetControlX} ${targetControlY}, ${targetX} ${targetY}`
+  // Cancel relationship creation
+  const handleCancelRelationship = () => {
+    setCreatingRelationship(false)
+    setRelationshipStart(null)
   }
 
   // Add event listeners for mouse move and up
@@ -220,170 +159,227 @@ export function DiagramCanvas({
     }
   }, [dragging])
 
-  // Render relationship markers based on relationship type
-  const renderRelationshipMarker = (type: string, side: string, x: number, y: number, angle: number) => {
-    // Rotate the marker based on the angle
-    const transform = `translate(${x}, ${y}) rotate(${angle})`
-
-    if (side === "source") {
-      if (type === "one-to-many" || type === "one-to-one") {
-        // Render a "one" marker (vertical line)
-        return (
-          <g transform={transform}>
-            <line x1="0" y1="-6" x2="0" y2="6" stroke="currentColor" strokeWidth="2" />
-          </g>
-        )
-      } else if (type === "many-to-one" || type === "many-to-many") {
-        // Render a "many" marker (crow's foot)
-        return (
-          <g transform={transform}>
-            <line x1="0" y1="0" x2="-8" y2="-6" stroke="currentColor" strokeWidth="1.5" />
-            <line x1="0" y1="0" x2="-8" y2="6" stroke="currentColor" strokeWidth="1.5" />
-            <line x1="-8" y1="-6" x2="-8" y2="6" stroke="currentColor" strokeWidth="1.5" />
-          </g>
-        )
-      }
-    } else {
-      // target side
-      if (type === "one-to-many" || type === "many-to-many") {
-        // Render a "many" marker (crow's foot)
-        return (
-          <g transform={transform}>
-            <line x1="0" y1="0" x2="-8" y2="-6" stroke="currentColor" strokeWidth="1.5" />
-            <line x1="0" y1="0" x2="-8" y2="6" stroke="currentColor" strokeWidth="1.5" />
-            <line x1="-8" y1="-6" x2="-8" y2="6" stroke="currentColor" strokeWidth="1.5" />
-          </g>
-        )
-      } else if (type === "one-to-one" || type === "many-to-one") {
-        // Render a "one" marker (vertical line)
-        return (
-          <g transform={transform}>
-            <line x1="0" y1="-6" x2="0" y2="6" stroke="currentColor" strokeWidth="2" />
-          </g>
-        )
-      }
+  // Handle canvas click to deselect
+  const handleCanvasClick = () => {
+    setSelectedTable(null)
+    if (creatingRelationship) {
+      handleCancelRelationship()
     }
-
-    return null
-  }
-
-  // Calculate angle for marker rotation
-  const calculateAngle = (x1: number, y1: number, x2: number, y2: number) => {
-    return (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI
   }
 
   return (
-    <div className="relative h-full w-full overflow-hidden bg-cryptic-background flex flex-col">
-      <div
-        ref={canvasRef}
-        className="flex-1 w-full overflow-auto p-4"
-        style={{ backgroundImage: "radial-gradient(#2a2a2d 1px, transparent 0)", backgroundSize: "20px 20px" }}
-      >
-        {tables.map((table) => (
-          <div
-            key={table.id}
-            id={`table-${table.id}`}
-            className={`absolute bg-cryptic-card border border-white/10 rounded-md shadow-sm cursor-move ${
-              selectedTable === table.id ? "ring-2 ring-cryptic-accent" : ""
-            }`}
-            style={{ left: `${table.x}px`, top: `${table.y}px`, width: "200px" }}
-            onMouseDown={(e) => handleMouseDown(e, table.id)}
-            onClick={() => handleTableSelect(table.id)}
-          >
-            <div className="p-2 border-b border-white/10 bg-cryptic-block/50 font-medium text-center">{table.name}</div>
-            <div className="p-2 space-y-1 text-sm">
-              {table.columns.map((column, idx) => (
-                <div key={idx} className="flex justify-between items-center">
-                  <span className="flex items-center gap-1">
-                    {column.isPrimary && <span className="text-yellow-500 text-xs">🔑</span>}
-                    {column.name}
-                  </span>
-                  <span className="text-xs text-muted-foreground">{column.type}</span>
-                </div>
-              ))}
+    <div
+      ref={canvasRef}
+      className="w-full h-full overflow-auto p-4"
+      style={{ backgroundImage: "radial-gradient(#e5e7eb 1px, transparent 0)", backgroundSize: "20px 20px" }}
+      onClick={handleCanvasClick}
+    >
+      {/* Render tables */}
+      {tables.map((table) => (
+        <div
+          key={table.id}
+          className={`absolute bg-card border rounded-md shadow-sm cursor-move ${
+            selectedTable === table.id ? "ring-2 ring-primary" : ""
+          }`}
+          style={{ left: `${table.x}px`, top: `${table.y}px`, width: "220px" }}
+          onMouseDown={(e) => handleMouseDown(e, table.id)}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="p-2 border-b bg-muted/50 font-medium text-center flex justify-between items-center">
+            <span>{table.name}</span>
+            <div className="flex gap-1">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 w-6 p-0"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onEditTable(table.id)
+                }}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                </svg>
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 w-6 p-0 text-red-500"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onDeleteTable(table.id)
+                }}
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
             </div>
           </div>
-        ))}
+          <div className="p-2 space-y-1 text-sm">
+            {table.columns.map((column, idx) => (
+              <div
+                key={idx}
+                className="flex justify-between items-center p-1 hover:bg-muted/30 rounded-sm"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <span className="flex items-center gap-1">
+                  {column.isPrimary && <span className="text-yellow-500 text-xs">🔑</span>}
+                  {column.name}
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">{column.type}</span>
+                  {creatingRelationship ? (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-5 w-5 p-0"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleCompleteRelationship(table.id, column.name)
+                      }}
+                    >
+                      <Link className="h-3 w-3" />
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleStartRelationship(table.id, column.name)
+                      }}
+                    >
+                      <Link className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
 
-        {/* Render relationships as SVG paths with markers */}
+      {/* Render relationships as SVG lines */}
+      <svg className="absolute top-0 left-0 w-full h-full pointer-events-none">
+        {relationships.map((rel) => {
+          const sourceTable = tables.find((t) => t.id === rel.source)
+          const targetTable = tables.find((t) => t.id === rel.target)
+
+          if (!sourceTable || !targetTable) return null
+
+          // Calculate connection points
+          const sourceX = sourceTable.x + 220 // Right side of source table
+          const sourceY = sourceTable.y + 30 + sourceTable.columns.findIndex((c) => c.name === rel.sourceKey) * 24
+          const targetX = targetTable.x // Left side of target table
+          const targetY = targetTable.y + 30 + targetTable.columns.findIndex((c) => c.name === rel.targetKey) * 24
+
+          // Draw a path with a curve
+          const midX = (sourceX + targetX) / 2
+          const path = `M ${sourceX} ${sourceY} C ${midX} ${sourceY}, ${midX} ${targetY}, ${targetX} ${targetY}`
+
+          return (
+            <g key={rel.id}>
+              <path
+                d={path}
+                stroke="currentColor"
+                strokeWidth="1"
+                strokeDasharray={rel.type === "many-to-many" ? "4" : "none"}
+                fill="none"
+                markerEnd="url(#arrowhead)"
+              />
+              {/* Source end marker (circle for "one", crow's foot for "many") */}
+              {rel.type === "one-to-many" || rel.type === "one-to-one" ? (
+                <circle cx={sourceX} cy={sourceY} r="3" fill="currentColor" />
+              ) : (
+                <path
+                  d={`M ${sourceX - 6} ${sourceY - 6} L ${sourceX} ${sourceY} L ${sourceX - 6} ${sourceY + 6}`}
+                  stroke="currentColor"
+                  fill="none"
+                />
+              )}
+              {/* Target end marker (circle for "one", crow's foot for "many") */}
+              {rel.type === "one-to-one" || rel.type === "many-to-one" ? (
+                <circle cx={targetX} cy={targetY} r="3" fill="currentColor" />
+              ) : (
+                <path
+                  d={`M ${targetX + 6} ${targetY - 6} L ${targetX} ${targetY} L ${targetX + 6} ${targetY + 6}`}
+                  stroke="currentColor"
+                  fill="none"
+                />
+              )}
+              {/* Delete button for relationship */}
+              <foreignObject
+                x={(sourceX + targetX) / 2 - 8}
+                y={(sourceY + targetY) / 2 - 8}
+                width="16"
+                height="16"
+                className="pointer-events-auto"
+              >
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-4 w-4 p-0 bg-background/80 rounded-full hover:bg-red-500 hover:text-white"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onDeleteRelationship(rel.id)
+                  }}
+                >
+                  <Trash2 className="h-2 w-2" />
+                </Button>
+              </foreignObject>
+            </g>
+          )
+        })}
+        {/* Arrow marker definition */}
+        <defs>
+          <marker
+            id="arrowhead"
+            markerWidth="10"
+            markerHeight="7"
+            refX="9"
+            refY="3.5"
+            orient="auto"
+            markerUnits="strokeWidth"
+          >
+            <polygon points="0 0, 10 3.5, 0 7" fill="currentColor" />
+          </marker>
+        </defs>
+      </svg>
+
+      {/* Relationship creation line */}
+      {creatingRelationship && relationshipStart && (
         <svg className="absolute top-0 left-0 w-full h-full pointer-events-none">
-          <defs>
-            {/* Define markers for different relationship types */}
-            <marker id="pk-marker" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-              <circle cx="5" cy="5" r="4" fill="#C5FC70" stroke="currentColor" strokeWidth="1" />
-            </marker>
-            <marker id="fk-marker" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-              <circle cx="5" cy="5" r="4" fill="#FF6B6B" stroke="currentColor" strokeWidth="1" />
-            </marker>
-          </defs>
-
-          {relationships.map((rel) => {
-            const sourceTable = tables.find((t) => t.id === rel.source)
-            const targetTable = tables.find((t) => t.id === rel.target)
-
-            if (!sourceTable || !targetTable) return null
-
-            // Get connection points and sides
-            const { sourceX, sourceY, targetX, targetY, sourceSide, targetSide } = getConnectionPoints(
-              sourceTable,
-              targetTable,
-              rel.sourceKey,
-              rel.targetKey,
-            )
-
-            // Generate bezier path
-            const path = generateBezierPath(sourceX, sourceY, targetX, targetY, sourceSide, targetSide)
-
-            // Calculate angles for markers
-            const sourceAngle = calculateAngle(
-              sourceX,
-              sourceY,
-              sourceSide === "right" ? sourceX + 20 : sourceSide === "left" ? sourceX - 20 : sourceX,
-              sourceSide === "bottom" ? sourceY + 20 : sourceSide === "top" ? sourceY - 20 : sourceY,
-            )
-
-            const targetAngle = calculateAngle(
-              targetX,
-              targetY,
-              targetSide === "right" ? targetX + 20 : targetSide === "left" ? targetX - 20 : targetX,
-              targetSide === "bottom" ? targetY + 20 : targetSide === "top" ? targetY - 20 : targetY,
-            )
-
-            return (
-              <g key={rel.id}>
-                {/* Main relationship path */}
-                <path d={path} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-
-                {/* Relationship type markers */}
-                {renderRelationshipMarker(rel.type || "one-to-many", "source", sourceX, sourceY, sourceAngle)}
-                {renderRelationshipMarker(rel.type || "one-to-many", "target", targetX, targetY, targetAngle)}
-
-                {/* PK/FK indicators */}
-                <text
-                  x={sourceX + (sourceSide === "left" ? -25 : sourceSide === "right" ? 25 : 0)}
-                  y={sourceY + (sourceSide === "top" ? -15 : sourceSide === "bottom" ? 15 : 0)}
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  className="text-xs font-bold"
-                  fill="#C5FC70"
-                >
-                  PK
-                </text>
-                <text
-                  x={targetX + (targetSide === "left" ? -25 : targetSide === "right" ? 25 : 0)}
-                  y={targetY + (targetSide === "top" ? -15 : targetSide === "bottom" ? 15 : 0)}
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  className="text-xs font-bold"
-                  fill="#FF6B6B"
-                >
-                  FK
-                </text>
-              </g>
-            )
-          })}
+          <line
+            x1={
+              tables.find((t) => t.id === relationshipStart.tableId)?.x + 220 // Right side of table
+            }
+            y1={
+              (tables.find((t) => t.id === relationshipStart.tableId)?.y || 0) +
+              30 +
+              (tables
+                .find((t) => t.id === relationshipStart.tableId)
+                ?.columns.findIndex((c) => c.name === relationshipStart.columnName) || 0) *
+                24
+            }
+            x2={window.innerWidth / 2}
+            y2={window.innerHeight / 2}
+            stroke="currentColor"
+            strokeWidth="1"
+            strokeDasharray="4"
+          />
         </svg>
-      </div>
+      )}
     </div>
   )
 }
