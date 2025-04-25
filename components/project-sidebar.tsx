@@ -1,36 +1,77 @@
 "use client"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { LayoutDashboard, FileText } from "lucide-react"
+
+import { GalleryVerticalEnd, LayoutDashboard, FileText } from "lucide-react"
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from "@/components/ui/sidebar"
 
 interface ProjectSidebarProps {
-  activeTab: string
-  onTabChange: (tab: string) => void
+  projectName: string
+  activeView: string
+  onViewChange: (view: string) => void
 }
 
-export function ProjectSidebar({ activeTab, onTabChange }: ProjectSidebarProps) {
+export function ProjectSidebar({ projectName, activeView, onViewChange }: ProjectSidebarProps) {
+  const navItems = [
+    {
+      title: "Diagram",
+      icon: LayoutDashboard,
+      id: "diagram",
+    },
+    {
+      title: "Documentation",
+      icon: FileText,
+      id: "documentation",
+    },
+  ]
+
   return (
-    <div className="w-[240px] border-r border-white/10 bg-cryptic-card flex flex-col">
-      <div className="p-4 border-b border-white/10">
-        <h2 className="text-lg font-medium">Project</h2>
-      </div>
-      <Tabs value={activeTab} className="w-full" onValueChange={onTabChange}>
-        <TabsList className="flex flex-col h-auto bg-transparent p-0 w-full">
-          <TabsTrigger
-            value="diagram"
-            className="justify-start px-4 py-2 data-[state=active]:bg-cryptic-accent/20 data-[state=active]:text-cryptic-accent rounded-none w-full"
-          >
-            <LayoutDashboard className="h-4 w-4 mr-2" />
-            Diagram
-          </TabsTrigger>
-          <TabsTrigger
-            value="documentation"
-            className="justify-start px-4 py-2 data-[state=active]:bg-cryptic-accent/20 data-[state=active]:text-cryptic-accent rounded-none w-full"
-          >
-            <FileText className="h-4 w-4 mr-2" />
-            Documentation
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
-    </div>
+    <Sidebar variant="inset" className="border-r border-white/10">
+      <SidebarHeader>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton size="lg" asChild>
+              <a href="/dashboard" className="flex justify-start items-center gap-2">
+                <div className="flex h-6 w-6 items-center justify-center rounded-md bg-cryptic-accent text-black">
+                  <GalleryVerticalEnd className="size-4" />
+                </div>
+                <div className="grid flex-1 text-left text-sm leading-tight">
+                  <span className="truncate font-semibold">AI Schema Builder</span>
+                </div>
+              </a>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarHeader>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel className="text-sm font-medium">{projectName || "New Project"}</SidebarGroupLabel>
+          <SidebarMenu className="gap-1">
+            {navItems.map((item) => (
+              <SidebarMenuItem key={item.id}>
+                <SidebarMenuButton asChild isActive={activeView === item.id}>
+                  <button
+                    className="rounded-[8px] h-[42px] px-[16px] flex justify-start items-center gap-3 hover:bg-[#ffffff1a]"
+                    onClick={() => onViewChange(item.id)}
+                  >
+                    <item.icon width={16} height={16} />
+                    <span className="text-sm">{item.title}</span>
+                  </button>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
+        </SidebarGroup>
+      </SidebarContent>
+      <SidebarFooter>{/* Footer content if needed */}</SidebarFooter>
+    </Sidebar>
   )
 }

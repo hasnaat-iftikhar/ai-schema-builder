@@ -188,10 +188,6 @@ datasource db {
 
     const relType = rel.type || "one-to-many"
 
-    // Generate unique foreign key field names to avoid conflicts
-    const sourceFKField = `${targetTable.name.toLowerCase()}_${rel.targetKey}`
-    const targetFKField = `${sourceTable.name.toLowerCase()}_${rel.sourceKey}`
-
     // Add relationship to source table
     tableRelationships.get(rel.source)?.push({
       table: targetTable.name,
@@ -199,8 +195,6 @@ datasource db {
       type: relType,
       sourceKey: rel.sourceKey,
       targetKey: rel.targetKey,
-      fkField: sourceFKField,
-      relationName: `${sourceTable.name}To${targetTable.name}`,
     })
 
     // Add relationship to target table
@@ -210,8 +204,6 @@ datasource db {
       type: relType === "one-to-many" ? "many-to-one" : relType,
       sourceKey: rel.targetKey,
       targetKey: rel.sourceKey,
-      fkField: targetFKField,
-      relationName: `${sourceTable.name}To${targetTable.name}`,
     })
   })
 
@@ -263,39 +255,15 @@ ${(() => {
   if (rels.length === 0) return ""
 
   let relCode = "  // Relationships\n"
-
-  // Track fields we've already added to avoid duplicates
-  const addedFields = new Set(table.columns.map((col) => col.name))
-
   rels.forEach((rel) => {
     if (rel.type === "one-to-many") {
-      // One side of one-to-many has the array of related entities
-      relCode += `  ${rel.field} ${rel.table}[] @relation("${rel.relationName}")\n`
+      relCode += `  ${rel.field} ${rel.table}[] @relation("${table.name}To${rel.table}")\n`
     } else if (rel.type === "many-to-one") {
-      // Many side of one-to-many has the reference to the one side
-      relCode += `  ${rel.field} ${rel.table}? @relation("${rel.relationName}", fields: [${rel.fkField}], references: [${rel.targetKey}])\n`
-
-      // Add foreign key field if it doesn't already exist
-      if (!addedFields.has(rel.fkField)) {
-        relCode += `  ${rel.fkField} String\n`
-        addedFields.add(rel.fkField)
-      }
+      relCode += `  ${rel.field} ${rel.table}? @relation("${rel.table}To${table.name}", fields: [${rel.sourceKey}], references: [${rel.targetKey}])\n`
+      relCode += `  ${rel.sourceKey} String\n`
     } else if (rel.type === "one-to-one") {
-      // For one-to-one, only one side should have the foreign key
-      if (!rel.isSecondary) {
-        relCode += `  ${rel.field} ${rel.table}? @relation("${rel.relationName}", fields: [${rel.fkField}], references: [${rel.targetKey}])\n`
-
-        // Add foreign key field with @unique constraint
-        if (!addedFields.has(rel.fkField)) {
-          relCode += `  ${rel.fkField} String @unique\n`
-          addedFields.add(rel.fkField)
-        }
-      } else {
-        relCode += `  ${rel.field} ${rel.table}? @relation("${rel.relationName}")\n`
-      }
-    } else if (rel.type === "many-to-many") {
-      // For many-to-many, both sides have arrays
-      relCode += `  ${rel.field} ${rel.table}[] @relation("${rel.relationName}")\n`
+      relCode += `  ${rel.field} ${rel.table}? @relation("${table.name}To${rel.table}", fields: [${rel.sourceKey}], references: [${rel.targetKey}])\n`
+      relCode += `  ${rel.sourceKey} String @unique\n`
     }
   })
   return relCode
@@ -356,55 +324,25 @@ ${table.columns
     return `  ${col.name} ${type}${constraints.length > 0 ? " " + constraints.join(" ") : ""}`
   })
   .filter(Boolean)
-  .join(",\n")}${addForeignKeysSQL(table, tables, relationships)}
+  .join(",\n")}${addForeignKeys(table, tables, relationships)}
 );
 
 `
   })
 
-  // Add junction tables for many-to-many relationships
-  const manyToManyRels = relationships.filter((rel) => rel.type === "many-to-many")
-  if (manyToManyRels.length > 0) {
-    code += "\n-- Junction tables for many-to-many relationships\n\n"
-
-    manyToManyRels.forEach((rel) => {
-      const sourceTable = tables.find((t) => t.id === rel.source)
-      const targetTable = tables.find((t) => t.id === rel.target)
-
-      if (!sourceTable || !targetTable) return
-
-      const junctionTableName = rel.through || `${sourceTable.name.toLowerCase()}_${targetTable.name.toLowerCase()}`
-
-      code += `CREATE TABLE ${junctionTableName} (
-  ${sourceTable.name.toLowerCase()}_${rel.sourceKey} UUID NOT NULL,
-  ${targetTable.name.toLowerCase()}_${rel.targetKey} UUID NOT NULL,
-  PRIMARY KEY (${sourceTable.name.toLowerCase()}_${rel.sourceKey}, ${targetTable.name.toLowerCase()}_${rel.targetKey}),
-  FOREIGN KEY (${sourceTable.name.toLowerCase()}_${rel.sourceKey}) REFERENCES ${sourceTable.name.toLowerCase()}(${rel.sourceKey}),
-  FOREIGN KEY (${targetTable.name.toLowerCase()}_${rel.targetKey}) REFERENCES ${targetTable.name.toLowerCase()}(${rel.targetKey})
-);
-
-`
-    })
-  }
-
   return code
 }
 
 // Helper function to add foreign keys to SQL tables
-function addForeignKeysSQL(table: TableData, tables: TableData[], relationships: Relationship[]) {
-  // Find relationships where this table is the "many" side (contains the foreign key)
+function addForeignKeys(table: TableData, tables: TableData[], relationships: Relationship[]) {
   const foreignKeys = relationships.filter(
-    (rel) =>
-      (rel.target === table.id && (rel.type === "one-to-many" || !rel.type)) ||
-      (rel.source === table.id && rel.type === "many-to-one") ||
-      (rel.target === table.id && rel.type === "one-to-one"),
+    (rel) => rel.target === table.id || (rel.source === table.id && rel.type === "many-to-one"),
   )
 
   if (foreignKeys.length === 0) return ""
 
   let fkCode = ",\n\n  -- Foreign Keys"
 
-  // Add foreign key columns first
   foreignKeys.forEach((rel) => {
     const isTarget = rel.target === table.id
     const referencedTableId = isTarget ? rel.source : rel.target
@@ -412,35 +350,10 @@ function addForeignKeysSQL(table: TableData, tables: TableData[], relationships:
 
     if (!referencedTable) return
 
-    // Generate a unique foreign key column name
-    const fkColumnName = `${referencedTable.name.toLowerCase()}_${isTarget ? rel.sourceKey : rel.targetKey}`
+    const localKey = isTarget ? rel.targetKey : rel.sourceKey
+    const foreignKey = isTarget ? rel.sourceKey : rel.targetKey
 
-    // Check if the column already exists in the table
-    const columnExists = table.columns.some((col) => col.name === fkColumnName)
-
-    if (!columnExists) {
-      fkCode += `,\n  ${fkColumnName} UUID`
-    }
-  })
-
-  // Then add foreign key constraints
-  foreignKeys.forEach((rel) => {
-    const isTarget = rel.target === table.id
-    const referencedTableId = isTarget ? rel.source : rel.target
-    const referencedTable = tables.find((t) => t.id === referencedTableId)
-
-    if (!referencedTable) return
-
-    // Generate a unique foreign key column name
-    const fkColumnName = `${referencedTable.name.toLowerCase()}_${isTarget ? rel.sourceKey : rel.targetKey}`
-    const referencedColumnName = isTarget ? rel.sourceKey : rel.targetKey
-
-    fkCode += `,\n  FOREIGN KEY (${fkColumnName}) REFERENCES ${referencedTable.name.toLowerCase()}(${referencedColumnName})`
-
-    // Add unique constraint for one-to-one relationships
-    if (rel.type === "one-to-one") {
-      fkCode += `,\n  UNIQUE (${fkColumnName})`
-    }
+    fkCode += `,\n  FOREIGN KEY (${localKey}) REFERENCES ${referencedTable.name.toLowerCase()}(${foreignKey})`
   })
 
   return fkCode
@@ -492,14 +405,7 @@ ${table.columns
     const options = []
     if (col.isPrimary) {
       options.push("primaryKey: true")
-
-      if (col.type === "uuid") {
-        options.push("defaultValue: Sequelize.UUIDV4")
-      } else if (col.type === "integer") {
-        options.push("autoIncrement: true")
-      }
     }
-
     if (col.isUnique) {
       options.push("unique: true")
     }
@@ -528,48 +434,15 @@ ${relationships
 
     const relType = rel.type || "one-to-many"
 
-    // Generate unique foreign key names
-    const foreignKey = `${sourceTable.name.toLowerCase()}_${rel.sourceKey}`
-
     if (relType === "one-to-many") {
-      return `${sourceTable.name}.hasMany(${targetTable.name}, { 
-  foreignKey: '${foreignKey}',
-  sourceKey: '${rel.sourceKey}'
-});
-${targetTable.name}.belongsTo(${sourceTable.name}, { 
-  foreignKey: '${foreignKey}',
-  targetKey: '${rel.sourceKey}'
-});`
-    } else if (relType === "many-to-one") {
-      return `${targetTable.name}.hasMany(${sourceTable.name}, { 
-  foreignKey: '${foreignKey}',
-  sourceKey: '${rel.targetKey}'
-});
-${sourceTable.name}.belongsTo(${targetTable.name}, { 
-  foreignKey: '${foreignKey}',
-  targetKey: '${rel.targetKey}'
-});`
+      return `${sourceTable.name}.hasMany(${targetTable.name}, { foreignKey: '${rel.targetKey}' });
+${targetTable.name}.belongsTo(${sourceTable.name}, { foreignKey: '${rel.targetKey}' });`
     } else if (relType === "one-to-one") {
-      return `${sourceTable.name}.hasOne(${targetTable.name}, { 
-  foreignKey: '${foreignKey}',
-  sourceKey: '${rel.sourceKey}'
-});
-${targetTable.name}.belongsTo(${sourceTable.name}, { 
-  foreignKey: '${foreignKey}',
-  targetKey: '${rel.sourceKey}'
-});`
+      return `${sourceTable.name}.hasOne(${targetTable.name}, { foreignKey: '${rel.targetKey}' });
+${targetTable.name}.belongsTo(${sourceTable.name}, { foreignKey: '${rel.targetKey}' });`
     } else if (relType === "many-to-many") {
-      const through = rel.through || `${sourceTable.name.toLowerCase()}_${targetTable.name.toLowerCase()}`
-      return `${sourceTable.name}.belongsToMany(${targetTable.name}, { 
-  through: '${through}',
-  foreignKey: '${sourceTable.name.toLowerCase()}_${rel.sourceKey}',
-  otherKey: '${targetTable.name.toLowerCase()}_${rel.targetKey}'
-});
-${targetTable.name}.belongsToMany(${sourceTable.name}, { 
-  through: '${through}',
-  foreignKey: '${targetTable.name.toLowerCase()}_${rel.targetKey}',
-  otherKey: '${sourceTable.name.toLowerCase()}_${rel.sourceKey}'
-});`
+      return `${sourceTable.name}.belongsToMany(${targetTable.name}, { through: '${rel.through || `${sourceTable.name.toLowerCase()}_${targetTable.name.toLowerCase()}`}' });
+${targetTable.name}.belongsToMany(${sourceTable.name}, { through: '${rel.through || `${sourceTable.name.toLowerCase()}_${targetTable.name.toLowerCase()}`}' });`
     }
 
     return ""
@@ -593,7 +466,7 @@ function generateTypeORMCode(tables: TableData[], relationships: Relationship[])
 
   let code = `// TypeORM Entities
 
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne, OneToOne, ManyToMany, JoinTable, JoinColumn } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne, OneToOne, ManyToMany, JoinTable } from "typeorm";
 
 `
 
@@ -612,20 +485,12 @@ import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne, OneToOne,
 
     const relType = rel.type || "one-to-many"
 
-    // Generate unique foreign key names
-    const sourceFKField = `${targetTable.name.toLowerCase()}${rel.targetKey.charAt(0).toUpperCase() + rel.targetKey.slice(1)}`
-    const targetFKField = `${sourceTable.name.toLowerCase()}${rel.sourceKey.charAt(0).toUpperCase() + rel.sourceKey.slice(1)}`
-
     // Add relationship to source table
     tableRelationships.get(rel.source)?.push({
       table: targetTable.name,
       field: targetTable.name.toLowerCase() + (relType === "one-to-many" ? "s" : ""),
       type: relType,
       inverse: sourceTable.name.toLowerCase(),
-      fkField: sourceFKField,
-      sourceKey: rel.sourceKey,
-      targetKey: rel.targetKey,
-      isOwner: relType === "many-to-one" || relType === "one-to-one",
     })
 
     // Add relationship to target table
@@ -634,13 +499,6 @@ import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne, OneToOne,
       field: sourceTable.name.toLowerCase(),
       type: relType === "one-to-many" ? "many-to-one" : relType,
       inverse: relType === "one-to-many" ? targetTable.name.toLowerCase() + "s" : targetTable.name.toLowerCase(),
-      fkField: targetFKField,
-      sourceKey: rel.targetKey,
-      targetKey: rel.sourceKey,
-      isOwner:
-        relType === "one-to-many" ||
-        (relType === "one-to-one" &&
-          !tableRelationships.get(rel.source)?.some((r) => r.type === "one-to-one" && r.table === targetTable.name)),
     })
   })
 
@@ -700,32 +558,12 @@ ${(() => {
     } else if (rel.type === "many-to-one") {
       relCode += `  @ManyToOne(() => ${rel.table}, ${rel.table.toLowerCase()} => ${rel.table.toLowerCase()}.${rel.inverse})
   ${rel.field}: ${rel.table};\n\n`
-
-      // Add foreign key column if this is the owner side
-      if (rel.isOwner) {
-        relCode += `  @Column({ nullable: true })
-  ${rel.fkField}: string;\n\n`
-      }
     } else if (rel.type === "one-to-one") {
-      if (rel.isOwner) {
-        relCode += `  @OneToOne(() => ${rel.table}, ${rel.table.toLowerCase()} => ${rel.table.toLowerCase()}.${rel.inverse})
-  @JoinColumn({ name: "${rel.fkField}" })
+      relCode += `  @OneToOne(() => ${rel.table}, ${rel.table.toLowerCase()} => ${rel.table.toLowerCase()}.${rel.inverse})
   ${rel.field}: ${rel.table};\n\n`
-
-        // Add foreign key column
-        relCode += `  @Column({ nullable: true })
-  ${rel.fkField}: string;\n\n`
-      } else {
-        relCode += `  @OneToOne(() => ${rel.table}, ${rel.table.toLowerCase()} => ${rel.table.toLowerCase()}.${rel.inverse})
-  ${rel.field}: ${rel.table};\n\n`
-      }
     } else if (rel.type === "many-to-many") {
-      relCode += `  @ManyToMany(() => ${rel.table}, ${rel.table.toLowerCase()} => ${rel.table.toLowerCase()}.${rel.inverse})
-  @JoinTable({
-    name: "${table.name.toLowerCase()}_${rel.table.toLowerCase()}",
-    joinColumn: { name: "${table.name.toLowerCase()}_${rel.sourceKey}", referencedColumnName: "${rel.sourceKey}" },
-    inverseJoinColumn: { name: "${rel.table.toLowerCase()}_${rel.targetKey}", referencedColumnName: "${rel.targetKey}" }
-  })
+      relCode += `  @ManyToMany(() => ${rel.table})
+  @JoinTable()
   ${rel.field}: ${rel.table}[];\n\n`
     }
   })
