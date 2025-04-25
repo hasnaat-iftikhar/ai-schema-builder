@@ -13,6 +13,10 @@ interface Column {
   isPrimary?: boolean
   isUnique?: boolean
   isForeign?: boolean
+  references?: {
+    table: string
+    column: string
+  }
 }
 
 interface TableData {
@@ -169,6 +173,40 @@ datasource db {
 
 `
 
+  // Process relationships to add them to the correct tables
+  const tableRelationships = new Map<string, any[]>()
+
+  tables.forEach((table) => {
+    tableRelationships.set(table.id, [])
+  })
+
+  relationships.forEach((rel) => {
+    const sourceTable = tables.find((t) => t.id === rel.source)
+    const targetTable = tables.find((t) => t.id === rel.target)
+
+    if (!sourceTable || !targetTable) return
+
+    const relType = rel.type || "one-to-many"
+
+    // Add relationship to source table
+    tableRelationships.get(rel.source)?.push({
+      table: targetTable.name,
+      field: targetTable.name.toLowerCase() + (relType === "one-to-many" ? "s" : ""),
+      type: relType,
+      sourceKey: rel.sourceKey,
+      targetKey: rel.targetKey,
+    })
+
+    // Add relationship to target table
+    tableRelationships.get(rel.target)?.push({
+      table: sourceTable.name,
+      field: sourceTable.name.toLowerCase(),
+      type: relType === "one-to-many" ? "many-to-one" : relType,
+      sourceKey: rel.targetKey,
+      targetKey: rel.sourceKey,
+    })
+  })
+
   // Add models for each table
   tables.forEach((table) => {
     if (!table || !table.columns) return
@@ -211,6 +249,25 @@ ${table.columns
   })
   .filter(Boolean)
   .join("\n")}
+
+${(() => {
+  const rels = tableRelationships.get(table.id) || []
+  if (rels.length === 0) return ""
+
+  let relCode = "  // Relationships\n"
+  rels.forEach((rel) => {
+    if (rel.type === "one-to-many") {
+      relCode += `  ${rel.field} ${rel.table}[] @relation("${table.name}To${rel.table}")\n`
+    } else if (rel.type === "many-to-one") {
+      relCode += `  ${rel.field} ${rel.table}? @relation("${rel.table}To${table.name}", fields: [${rel.sourceKey}], references: [${rel.targetKey}])\n`
+      relCode += `  ${rel.sourceKey} String\n`
+    } else if (rel.type === "one-to-one") {
+      relCode += `  ${rel.field} ${rel.table}? @relation("${table.name}To${rel.table}", fields: [${rel.sourceKey}], references: [${rel.targetKey}])\n`
+      relCode += `  ${rel.sourceKey} String @unique\n`
+    }
+  })
+  return relCode
+})()}
 }
 
 `
@@ -252,7 +309,9 @@ ${table.columns
               ? "INTEGER"
               : col.type === "timestamp"
                 ? "TIMESTAMP"
-                : "VARCHAR(255)"
+                : col.type === "boolean"
+                  ? "BOOLEAN"
+                  : "VARCHAR(255)"
 
     const constraints = []
     if (col.isPrimary) {
@@ -265,13 +324,39 @@ ${table.columns
     return `  ${col.name} ${type}${constraints.length > 0 ? " " + constraints.join(" ") : ""}`
   })
   .filter(Boolean)
-  .join(",\n")}
+  .join(",\n")}${addForeignKeys(table, tables, relationships)}
 );
 
 `
   })
 
   return code
+}
+
+// Helper function to add foreign keys to SQL tables
+function addForeignKeys(table: TableData, tables: TableData[], relationships: Relationship[]) {
+  const foreignKeys = relationships.filter(
+    (rel) => rel.target === table.id || (rel.source === table.id && rel.type === "many-to-one"),
+  )
+
+  if (foreignKeys.length === 0) return ""
+
+  let fkCode = ",\n\n  -- Foreign Keys"
+
+  foreignKeys.forEach((rel) => {
+    const isTarget = rel.target === table.id
+    const referencedTableId = isTarget ? rel.source : rel.target
+    const referencedTable = tables.find((t) => t.id === referencedTableId)
+
+    if (!referencedTable) return
+
+    const localKey = isTarget ? rel.targetKey : rel.sourceKey
+    const foreignKey = isTarget ? rel.sourceKey : rel.targetKey
+
+    fkCode += `,\n  FOREIGN KEY (${localKey}) REFERENCES ${referencedTable.name.toLowerCase()}(${foreignKey})`
+  })
+
+  return fkCode
 }
 
 // Helper function to generate Sequelize code
@@ -336,6 +421,37 @@ ${table.columns
 `
   })
 
+  // Add associations
+  if (relationships.length > 0) {
+    code += `
+// Associations
+${relationships
+  .map((rel) => {
+    const sourceTable = tables.find((t) => t.id === rel.source)
+    const targetTable = tables.find((t) => t.id === rel.target)
+
+    if (!sourceTable || !targetTable) return ""
+
+    const relType = rel.type || "one-to-many"
+
+    if (relType === "one-to-many") {
+      return `${sourceTable.name}.hasMany(${targetTable.name}, { foreignKey: '${rel.targetKey}' });
+${targetTable.name}.belongsTo(${sourceTable.name}, { foreignKey: '${rel.targetKey}' });`
+    } else if (relType === "one-to-one") {
+      return `${sourceTable.name}.hasOne(${targetTable.name}, { foreignKey: '${rel.targetKey}' });
+${targetTable.name}.belongsTo(${sourceTable.name}, { foreignKey: '${rel.targetKey}' });`
+    } else if (relType === "many-to-many") {
+      return `${sourceTable.name}.belongsToMany(${targetTable.name}, { through: '${rel.through || `${sourceTable.name.toLowerCase()}_${targetTable.name.toLowerCase()}`}' });
+${targetTable.name}.belongsToMany(${sourceTable.name}, { through: '${rel.through || `${sourceTable.name.toLowerCase()}_${targetTable.name.toLowerCase()}`}' });`
+    }
+
+    return ""
+  })
+  .filter(Boolean)
+  .join("\n\n")}
+`
+  }
+
   return code
 }
 
@@ -350,9 +466,41 @@ function generateTypeORMCode(tables: TableData[], relationships: Relationship[])
 
   let code = `// TypeORM Entities
 
-import { Entity, PrimaryGeneratedColumn, Column } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne, OneToOne, ManyToMany, JoinTable } from "typeorm";
 
 `
+
+  // Process relationships to add them to the correct tables
+  const tableRelationships = new Map<string, any[]>()
+
+  tables.forEach((table) => {
+    tableRelationships.set(table.id, [])
+  })
+
+  relationships.forEach((rel) => {
+    const sourceTable = tables.find((t) => t.id === rel.source)
+    const targetTable = tables.find((t) => t.id === rel.target)
+
+    if (!sourceTable || !targetTable) return
+
+    const relType = rel.type || "one-to-many"
+
+    // Add relationship to source table
+    tableRelationships.get(rel.source)?.push({
+      table: targetTable.name,
+      field: targetTable.name.toLowerCase() + (relType === "one-to-many" ? "s" : ""),
+      type: relType,
+      inverse: sourceTable.name.toLowerCase(),
+    })
+
+    // Add relationship to target table
+    tableRelationships.get(rel.target)?.push({
+      table: sourceTable.name,
+      field: sourceTable.name.toLowerCase(),
+      type: relType === "one-to-many" ? "many-to-one" : relType,
+      inverse: relType === "one-to-many" ? targetTable.name.toLowerCase() + "s" : targetTable.name.toLowerCase(),
+    })
+  })
 
   // Define entities
   tables.forEach((table) => {
@@ -397,6 +545,30 @@ ${table.columns
   })
   .filter(Boolean)
   .join("\n\n")}
+
+${(() => {
+  const rels = tableRelationships.get(table.id) || []
+  if (rels.length === 0) return ""
+
+  let relCode = "\n  // Relationships\n"
+  rels.forEach((rel) => {
+    if (rel.type === "one-to-many") {
+      relCode += `  @OneToMany(() => ${rel.table}, ${rel.table.toLowerCase()} => ${rel.table.toLowerCase()}.${rel.inverse})
+  ${rel.field}: ${rel.table}[];\n\n`
+    } else if (rel.type === "many-to-one") {
+      relCode += `  @ManyToOne(() => ${rel.table}, ${rel.table.toLowerCase()} => ${rel.table.toLowerCase()}.${rel.inverse})
+  ${rel.field}: ${rel.table};\n\n`
+    } else if (rel.type === "one-to-one") {
+      relCode += `  @OneToOne(() => ${rel.table}, ${rel.table.toLowerCase()} => ${rel.table.toLowerCase()}.${rel.inverse})
+  ${rel.field}: ${rel.table};\n\n`
+    } else if (rel.type === "many-to-many") {
+      relCode += `  @ManyToMany(() => ${rel.table})
+  @JoinTable()
+  ${rel.field}: ${rel.table}[];\n\n`
+    }
+  })
+  return relCode
+})()}
 }
 
 `
