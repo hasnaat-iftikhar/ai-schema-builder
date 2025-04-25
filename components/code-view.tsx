@@ -66,125 +66,41 @@ export function CodeView({ tables = [], relationships = [], onTablesChange, onRe
     }
   }, [newTableCreated])
 
-  // Update code when tables or relationships change
-  useEffect(() => {
-    // Generate initial code when switching to code view or when tables/relationships change
-    if (activeSubView === "code" || tables.length > 0 || relationships.length > 0) {
-      // We'll generate a default code representation based on the current state
-      const generateInitialCode = () => {
-        // Default to Prisma format for initial code
-        const prismaCode = generatePrismaCode(tables, relationships)
-        setSchemaCode(prismaCode)
+  // Create a new table with default columns
+  const createNewTable = () => {
+    try {
+      const newId = `t${Date.now()}`
+      const newTable: TableData = {
+        id: newId,
+        name: "NewTable",
+        x: 100,
+        y: 100,
+        columns: [
+          { name: "id", type: "uuid", isPrimary: true },
+          { name: "created_at", type: "timestamp" },
+          { name: "updated_at", type: "timestamp" },
+        ],
       }
-
-      generateInitialCode()
+      onTablesChange([...tables, newTable])
+      setNewTableCreated(newId)
+    } catch (error) {
+      console.error("Error creating new table:", error)
     }
-  }, [tables, relationships, activeSubView])
+  }
 
-  // Helper function to generate initial Prisma code
-  const generatePrismaCode = (tables: TableData[], relationships: Relationship[]) => {
-    if (tables.length === 0) {
-      return `// Prisma schema
-      
-generator client {
-  provider = "prisma-client-js"
-}
-
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-
-// Add tables to your diagram to generate Prisma schema
-`
-    }
-
-    let code = `// Prisma schema
-
-generator client {
-  provider = "prisma-client-js"
-}
-
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-
-`
-
-    // Add models for each table
-    tables.forEach((table) => {
-      code += `model ${table.name} {
-  ${table.columns
-    .map((col) => {
-      let type =
-        col.type === "integer"
-          ? "Int"
-          : col.type === "varchar"
-            ? "String"
-            : col.type === "text"
-              ? "String"
-              : col.type === "boolean"
-                ? "Boolean"
-                : col.type === "timestamp"
-                  ? "DateTime"
-                  : col.type === "uuid"
-                    ? "String"
-                    : "String"
-
-      if (col.isPrimary) {
-        if (col.type === "uuid") {
-          type += " @id @default(uuid())"
-        } else if (col.type === "integer") {
-          type += " @id @default(autoincrement())"
-        } else {
-          type += " @id"
-        }
-      }
-
-      if (col.isUnique) {
-        type += " @unique"
-      }
-
-      return `${col.name} ${type}`
-    })
-    .join("\n  ")}
-}
-
-`
-    })
-
-    // Add relationships
-    if (relationships.length > 0) {
-      code += "\n// Relationships are represented in the model fields above\n"
-    }
-
-    return code
+  // Handle view switching
+  const handleViewChange = (view: "diagram" | "code") => {
+    setActiveSubView(view)
   }
 
   return (
     <div className="flex flex-col h-full w-full">
       <div className="flex justify-between items-center p-4 border-b border-white/10">
-        <ViewSwitcher activeView={activeSubView} onViewChange={setActiveSubView} />
+        <ViewSwitcher activeView={activeSubView} onViewChange={handleViewChange} />
         <div className="flex gap-2">
           <Button
             size="sm"
-            onClick={() => {
-              const newId = `t${tables.length + 1}`
-              const newTable: TableData = {
-                id: newId,
-                name: "NewTable",
-                x: 100,
-                y: 100,
-                columns: [
-                  { name: "id", type: "uuid", isPrimary: true },
-                  { name: "created_at", type: "timestamp" },
-                  { name: "updated_at", type: "timestamp" },
-                ],
-              }
-              onTablesChange([...tables, newTable])
-              setNewTableCreated(newId) // Set the new table ID to trigger auto-open
-            }}
+            onClick={createNewTable}
             className="bg-cryptic-accent text-black hover:bg-cryptic-accent/90"
           >
             <Plus className="h-4 w-4 mr-2" /> Add Table
@@ -196,7 +112,7 @@ datasource db {
       </div>
 
       <div className="flex flex-1 w-full">
-        {activeSubView === "diagram" && (
+        {activeSubView === "diagram" ? (
           <div className="flex flex-1">
             <DiagramCanvas
               tables={tables}
@@ -208,27 +124,21 @@ datasource db {
             <TablesSidebar
               tables={tables}
               onTableSelect={(tableId) => {
-                // Select the table and open the properties dialog
                 setSelectedTable(tableId)
                 setPropertiesOpen(true)
               }}
               onTableDelete={(tableId) => {
-                // Remove the table
                 onTablesChange(tables.filter((t) => t.id !== tableId))
-                // Also remove any relationships involving this table
                 onRelationshipsChange(relationships.filter((r) => r.source !== tableId && r.target !== tableId))
               }}
             />
           </div>
-        )}
-        {activeSubView === "code" && (
+        ) : (
           <SchemaCodePanel
             tables={tables}
             relationships={relationships}
             onTablesChange={onTablesChange}
             onRelationshipsChange={onRelationshipsChange}
-            code={schemaCode}
-            onCodeChange={setSchemaCode}
           />
         )}
       </div>
