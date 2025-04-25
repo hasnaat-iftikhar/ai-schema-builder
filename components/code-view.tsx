@@ -42,7 +42,7 @@ interface CodeViewProps {
   onRelationshipsChange: (relationships: Relationship[]) => void
 }
 
-export function CodeView({ tables = [], relationships = [], onTablesChange, onRelationshipsChange }: CodeViewProps) {
+export function CodeView({ tables, relationships, onTablesChange, onRelationshipsChange }: CodeViewProps) {
   const [activeSubView, setActiveSubView] = useState<"diagram" | "code">("diagram")
   const [selectedTable, setSelectedTable] = useState<string | null>(null)
   const [propertiesOpen, setPropertiesOpen] = useState(false)
@@ -66,15 +66,101 @@ export function CodeView({ tables = [], relationships = [], onTablesChange, onRe
     }
   }, [newTableCreated])
 
-  // Handle view switching
-  const handleViewChange = (view: "diagram" | "code") => {
-    setActiveSubView(view)
+  // Update code when tables or relationships change
+  useEffect(() => {
+    // Generate initial code when switching to code view or when tables/relationships change
+    if (activeSubView === "code" || tables.length > 0 || relationships.length > 0) {
+      // We'll generate a default code representation based on the current state
+      const generateInitialCode = () => {
+        // Default to Prisma format for initial code
+        const prismaCode = generatePrismaCode(tables, relationships)
+        setSchemaCode(prismaCode)
+      }
+
+      generateInitialCode()
+    }
+  }, [tables, relationships, activeSubView])
+
+  // Helper function to generate initial Prisma code
+  const generatePrismaCode = (tables: TableData[], relationships: Relationship[]) => {
+    if (tables.length === 0) {
+      return `// Prisma schema
+      
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Add tables to your diagram to generate Prisma schema
+`
+    }
+
+    let code = `// Prisma schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+`
+
+    // Add models for each table
+    tables.forEach((table) => {
+      code += `model ${table.name} {
+  ${table.columns
+    .map((col) => {
+      let type =
+        col.type === "integer"
+          ? "Int"
+          : col.type === "varchar"
+            ? "String"
+            : col.type === "text"
+              ? "String"
+              : col.type === "boolean"
+                ? "Boolean"
+                : col.type === "timestamp"
+                  ? "DateTime"
+                  : col.type === "uuid"
+                    ? "String"
+                    : "String"
+
+      if (col.isPrimary) {
+        if (col.type === "uuid") {
+          type += " @id @default(uuid())"
+        } else if (col.type === "integer") {
+          type += " @id @default(autoincrement())"
+        } else {
+          type += " @id"
+        }
+      }
+
+      if (col.isUnique) {
+        type += " @unique"
+      }
+
+      return `${col.name} ${type}`
+    })
+    .join("\n  ")}
+}
+
+`
+    })
+
+    return code
   }
 
   return (
     <div className="flex flex-col h-full w-full">
       <div className="flex justify-between items-center p-4 border-b border-white/10">
-        <ViewSwitcher activeView={activeSubView} onViewChange={handleViewChange} />
+        <ViewSwitcher activeView={activeSubView} onViewChange={setActiveSubView} />
         <div className="flex gap-2">
           <Button
             size="sm"
