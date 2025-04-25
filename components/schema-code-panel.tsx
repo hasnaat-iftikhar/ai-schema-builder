@@ -34,7 +34,7 @@ interface Relationship {
   sourceKey: string
   targetKey: string
   through?: string
-  type?: "one-to-one" | "one-to-many" | "many-to-one" | "many-to-many"
+  type?: "one-to-one" | "one-to-many" | "many-to-many"
 }
 
 interface SchemaCodePanelProps {
@@ -188,29 +188,78 @@ datasource db {
 
     const relType = rel.type || "one-to-many"
 
-    // Generate unique foreign key field names to avoid conflicts with existing columns
-    const foreignKeyField = `${sourceTable.name.toLowerCase()}_${rel.sourceKey}`
+    // For one-to-many relationships:
+    // - Source table (the "one" side) has an array of target entities
+    // - Target table (the "many" side) has a reference to the source entity and a foreign key
+    if (relType === "one-to-many" || relType === "many-to-one") {
+      // The "one" side (source in one-to-many, target in many-to-one)
+      const oneSideTable = relType === "one-to-many" ? sourceTable : targetTable
+      const oneSideTableId = relType === "one-to-many" ? rel.source : rel.target
 
-    // Add relationship to source table
-    tableRelationships.get(rel.source)?.push({
-      table: targetTable.name,
-      field: targetTable.name.toLowerCase() + (relType === "one-to-many" ? "s" : ""),
-      type: relType,
-      sourceKey: rel.sourceKey,
-      targetKey: rel.targetKey,
-      relationName: `${sourceTable.name}To${targetTable.name}`,
-    })
+      // The "many" side (target in one-to-many, source in many-to-one)
+      const manySideTable = relType === "one-to-many" ? targetTable : sourceTable
+      const manySideTableId = relType === "one-to-many" ? rel.target : rel.source
 
-    // Add relationship to target table
-    tableRelationships.get(rel.target)?.push({
-      table: sourceTable.name,
-      field: sourceTable.name.toLowerCase(),
-      type: relType === "one-to-many" ? "many-to-one" : relType,
-      sourceKey: rel.targetKey,
-      targetKey: rel.sourceKey,
-      foreignKeyField: foreignKeyField,
-      relationName: `${sourceTable.name}To${targetTable.name}`,
-    })
+      // The key in the "one" side that is referenced
+      const oneKey = relType === "one-to-many" ? rel.sourceKey : rel.targetKey
+
+      // Generate a proper foreign key name for the "many" side
+      const foreignKeyField = `${oneSideTable.name.toLowerCase()}_${oneKey}`
+
+      // Add to the "one" side - has array of "many" entities
+      tableRelationships.get(oneSideTableId)?.push({
+        table: manySideTable.name,
+        field: `${manySideTable.name.toLowerCase()}s`, // Plural
+        type: "one-to-many",
+        relationName: `${oneSideTable.name}To${manySideTable.name}`,
+      })
+
+      // Add to the "many" side - has reference to "one" entity and foreign key
+      tableRelationships.get(manySideTableId)?.push({
+        table: oneSideTable.name,
+        field: oneSideTable.name.toLowerCase(), // Singular
+        type: "many-to-one",
+        foreignKeyField: foreignKeyField,
+        referencedKey: oneKey,
+        relationName: `${oneSideTable.name}To${manySideTable.name}`,
+      })
+    } else if (relType === "one-to-one") {
+      // For one-to-one, we'll make the source side the owner (has the foreign key)
+      const foreignKeyField = `${targetTable.name.toLowerCase()}_${rel.targetKey}`
+
+      // Source side (has foreign key)
+      tableRelationships.get(rel.source)?.push({
+        table: targetTable.name,
+        field: targetTable.name.toLowerCase(),
+        type: "one-to-one-owner",
+        foreignKeyField: foreignKeyField,
+        referencedKey: rel.targetKey,
+        relationName: `${sourceTable.name}To${targetTable.name}`,
+      })
+
+      // Target side (no foreign key)
+      tableRelationships.get(rel.target)?.push({
+        table: sourceTable.name,
+        field: sourceTable.name.toLowerCase(),
+        type: "one-to-one-inverse",
+        relationName: `${sourceTable.name}To${targetTable.name}`,
+      })
+    } else if (relType === "many-to-many") {
+      // For many-to-many, both sides have arrays
+      tableRelationships.get(rel.source)?.push({
+        table: targetTable.name,
+        field: `${targetTable.name.toLowerCase()}s`,
+        type: "many-to-many",
+        relationName: `${sourceTable.name}To${targetTable.name}`,
+      })
+
+      tableRelationships.get(rel.target)?.push({
+        table: sourceTable.name,
+        field: `${sourceTable.name.toLowerCase()}s`,
+        type: "many-to-many",
+        relationName: `${sourceTable.name}To${targetTable.name}`,
+      })
+    }
   })
 
   // Add models for each table
@@ -271,25 +320,29 @@ ${(() => {
       relCode += `  ${rel.field} ${rel.table}[] @relation("${rel.relationName}")\n`
     } else if (rel.type === "many-to-one") {
       // Many side of one-to-many has the reference to the one side
-      const fkField = rel.foreignKeyField || `${rel.field}_${rel.targetKey}`
+      const fkField = rel.foreignKeyField
 
-      relCode += `  ${rel.field} ${rel.table}? @relation("${rel.relationName}", fields: [${fkField}], references: [${rel.targetKey}])\n`
+      relCode += `  ${rel.field} ${rel.table}? @relation("${rel.relationName}", fields: [${fkField}], references: [${rel.referencedKey}])\n`
 
       // Add foreign key field if it doesn't already exist
       if (!addedFields.has(fkField)) {
         relCode += `  ${fkField} String\n`
         addedFields.add(fkField)
       }
-    } else if (rel.type === "one-to-one") {
-      const fkField = rel.foreignKeyField || `${rel.field}_${rel.targetKey}`
+    } else if (rel.type === "one-to-one-owner") {
+      const fkField = rel.foreignKeyField
 
-      relCode += `  ${rel.field} ${rel.table}? @relation("${rel.relationName}", fields: [${fkField}], references: [${rel.targetKey}])\n`
+      relCode += `  ${rel.field} ${rel.table}? @relation("${rel.relationName}", fields: [${fkField}], references: [${rel.referencedKey}])\n`
 
       // Add foreign key field with @unique constraint
       if (!addedFields.has(fkField)) {
         relCode += `  ${fkField} String @unique\n`
         addedFields.add(fkField)
       }
+    } else if (rel.type === "one-to-one-inverse") {
+      relCode += `  ${rel.field} ${rel.table}? @relation("${rel.relationName}")\n`
+    } else if (rel.type === "many-to-many") {
+      relCode += `  ${rel.field} ${rel.table}[] @relation("${rel.relationName}")\n`
     }
   })
   return relCode
