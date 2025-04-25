@@ -67,7 +67,6 @@ export default function CreateProjectPage() {
             relationships={relationships}
             onTablesChange={setTables}
             onRelationshipsChange={setRelationships}
-            activeView={activeView}
           />
         )
       case "documentation":
@@ -87,7 +86,6 @@ export default function CreateProjectPage() {
             relationships={relationships}
             onTablesChange={setTables}
             onRelationshipsChange={setRelationships}
-            activeView={activeView}
           />
         )
     }

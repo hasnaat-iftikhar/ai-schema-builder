@@ -1,6 +1,6 @@
 "use client"
 
-import { GalleryVerticalEnd, LayoutDashboard, FileText } from "lucide-react"
+import { GalleryVerticalEnd, LayoutDashboard, FileCode, FileText, Settings } from "lucide-react"
 import {
   Sidebar,
   SidebarContent,
@@ -27,9 +27,19 @@ export function ProjectSidebar({ projectName, activeView, onViewChange }: Projec
       id: "diagram",
     },
     {
+      title: "Schema Code",
+      icon: FileCode,
+      id: "schema-code",
+    },
+    {
       title: "Documentation",
       icon: FileText,
       id: "documentation",
+    },
+    {
+      title: "Settings",
+      icon: Settings,
+      id: "settings",
     },
   ]
 
