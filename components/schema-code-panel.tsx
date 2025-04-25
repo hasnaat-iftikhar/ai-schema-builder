@@ -188,6 +188,9 @@ datasource db {
 
     const relType = rel.type || "one-to-many"
 
+    // Generate unique foreign key field names to avoid conflicts with existing columns
+    const foreignKeyField = `${sourceTable.name.toLowerCase()}_${rel.sourceKey}`
+
     // Add relationship to source table
     tableRelationships.get(rel.source)?.push({
       table: targetTable.name,
@@ -195,6 +198,7 @@ datasource db {
       type: relType,
       sourceKey: rel.sourceKey,
       targetKey: rel.targetKey,
+      relationName: `${sourceTable.name}To${targetTable.name}`,
     })
 
     // Add relationship to target table
@@ -204,6 +208,8 @@ datasource db {
       type: relType === "one-to-many" ? "many-to-one" : relType,
       sourceKey: rel.targetKey,
       targetKey: rel.sourceKey,
+      foreignKeyField: foreignKeyField,
+      relationName: `${sourceTable.name}To${targetTable.name}`,
     })
   })
 
@@ -255,15 +261,35 @@ ${(() => {
   if (rels.length === 0) return ""
 
   let relCode = "  // Relationships\n"
+
+  // Track fields we've already added to avoid duplicates
+  const addedFields = new Set(table.columns.map((col) => col.name))
+
   rels.forEach((rel) => {
     if (rel.type === "one-to-many") {
-      relCode += `  ${rel.field} ${rel.table}[] @relation("${table.name}To${rel.table}")\n`
+      // One side of one-to-many has the array of related entities
+      relCode += `  ${rel.field} ${rel.table}[] @relation("${rel.relationName}")\n`
     } else if (rel.type === "many-to-one") {
-      relCode += `  ${rel.field} ${rel.table}? @relation("${rel.table}To${table.name}", fields: [${rel.sourceKey}], references: [${rel.targetKey}])\n`
-      relCode += `  ${rel.sourceKey} String\n`
+      // Many side of one-to-many has the reference to the one side
+      const fkField = rel.foreignKeyField || `${rel.field}_${rel.targetKey}`
+
+      relCode += `  ${rel.field} ${rel.table}? @relation("${rel.relationName}", fields: [${fkField}], references: [${rel.targetKey}])\n`
+
+      // Add foreign key field if it doesn't already exist
+      if (!addedFields.has(fkField)) {
+        relCode += `  ${fkField} String\n`
+        addedFields.add(fkField)
+      }
     } else if (rel.type === "one-to-one") {
-      relCode += `  ${rel.field} ${rel.table}? @relation("${table.name}To${rel.table}", fields: [${rel.sourceKey}], references: [${rel.targetKey}])\n`
-      relCode += `  ${rel.sourceKey} String @unique\n`
+      const fkField = rel.foreignKeyField || `${rel.field}_${rel.targetKey}`
+
+      relCode += `  ${rel.field} ${rel.table}? @relation("${rel.relationName}", fields: [${fkField}], references: [${rel.targetKey}])\n`
+
+      // Add foreign key field with @unique constraint
+      if (!addedFields.has(fkField)) {
+        relCode += `  ${fkField} String @unique\n`
+        addedFields.add(fkField)
+      }
     }
   })
   return relCode
